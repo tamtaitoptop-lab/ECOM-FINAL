@@ -1,0 +1,2488 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECOM DIGITAL — Quản lý kinh doanh thương mại điện tử</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/lucide@0.395.0/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg-0:#050816; --bg-1:#080B1F; --bg-2:#10142B; --bg-3:#161B36;
+  --card:rgba(255,255,255,0.035); --card-hover:rgba(255,255,255,0.06);
+  --border:rgba(255,255,255,0.09); --border-soft:rgba(255,255,255,0.05);
+  --text:#E8E9F1; --muted:#8E93AC; --muted-2:#5D6285;
+  --purple:#8B5CF6; --pink:#EC4899; --blue:#3B82F6;
+  --green:#22C55E; --red:#F43F5E; --yellow:#F59E0B; --cyan:#22D3EE;
+  --grad-1:linear-gradient(135deg,#8B5CF6,#EC4899);
+  --grad-2:linear-gradient(135deg,#3B82F6,#8B5CF6);
+  --grad-3:linear-gradient(135deg,#EC4899,#3B82F6);
+  --radius:14px; --radius-sm:10px;
+  --shadow:0 8px 30px rgba(0,0,0,0.35);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:
+    radial-gradient(1200px 700px at 85% -10%, rgba(139,92,246,0.16), transparent 60%),
+    radial-gradient(1000px 600px at -10% 20%, rgba(236,72,153,0.10), transparent 55%),
+    radial-gradient(900px 500px at 50% 110%, rgba(59,130,246,0.10), transparent 55%),
+    var(--bg-0);
+  color:var(--text);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+  min-height:100vh;
+}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+
+/* ===== LAYOUT ===== */
+#app{display:flex;min-height:100vh;}
+.sidebar{
+  width:258px;flex-shrink:0;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));
+  border-right:1px solid var(--border-soft);position:sticky;top:0;height:100vh;overflow-y:auto;
+  display:flex;flex-direction:column;transition:width .2s ease;z-index:50;
+}
+.sidebar.collapsed{width:76px;}
+.sb-logo{padding:22px 20px 16px;display:flex;align-items:center;gap:10px;}
+.sb-logo-mark{width:38px;height:38px;border-radius:11px;background:var(--grad-1);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;box-shadow:0 0 22px rgba(139,92,246,0.45);}
+.sb-logo-text{line-height:1.1;overflow:hidden;white-space:nowrap;}
+.sb-logo-text b{font-size:15px;letter-spacing:0.5px;background:var(--grad-1);-webkit-background-clip:text;background-clip:text;color:transparent;display:block;}
+.sb-logo-text span{font-size:9.5px;color:var(--muted-2);letter-spacing:1.4px;}
+.sidebar.collapsed .sb-logo-text{display:none;}
+.sb-nav{flex:1;padding:6px 12px 20px;overflow-y:auto;}
+.sb-group-title{font-size:10.5px;color:var(--muted-2);letter-spacing:1px;margin:16px 10px 6px;font-weight:600;}
+.sidebar.collapsed .sb-group-title{display:none;}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--muted);font-size:13.5px;margin-bottom:2px;border:1px solid transparent;white-space:nowrap;overflow:hidden;}
+.sb-item svg{flex-shrink:0;width:17px;height:17px;}
+.sb-item:hover{background:var(--card-hover);color:var(--text);}
+.sb-item.active{background:linear-gradient(135deg,rgba(139,92,246,0.22),rgba(236,72,153,0.14));color:#fff;border-color:rgba(139,92,246,0.35);box-shadow:0 0 18px rgba(139,92,246,0.18) inset;}
+.sidebar.collapsed .sb-item span.label{display:none;}
+.sb-collapse-btn{margin:10px;padding:8px;border-radius:10px;background:var(--card);border:1px solid var(--border-soft);color:var(--muted);display:flex;align-items:center;justify-content:center;}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.topbar{
+  position:sticky;top:0;z-index:40;background:rgba(8,11,31,0.75);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border-soft);padding:12px 22px;display:flex;align-items:center;gap:16px;
+}
+.hamburger{display:none;background:var(--card);border:1px solid var(--border-soft);border-radius:10px;padding:8px;color:var(--text);}
+.breadcrumb{font-size:12.5px;color:var(--muted);flex-shrink:0;}
+.breadcrumb b{color:var(--text);font-weight:600;}
+.search-box{flex:1;max-width:360px;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border-soft);border-radius:10px;padding:8px 12px;}
+.search-box input{background:transparent;border:none;outline:none;color:var(--text);font-size:13px;width:100%;}
+.search-box svg{color:var(--muted-2);width:16px;height:16px;flex-shrink:0;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.icon-btn{position:relative;width:36px;height:36px;border-radius:10px;background:var(--card);border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center;color:var(--muted);}
+.icon-btn:hover{color:var(--text);background:var(--card-hover);}
+.icon-btn .dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--pink);box-shadow:0 0 6px var(--pink);}
+.avatar{width:34px;height:34px;border-radius:10px;background:var(--grad-2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;}
+
+.content{padding:22px;max-width:1500px;width:100%;margin:0 auto;}
+.page-title{font-size:20px;font-weight:700;margin:0 0 4px;}
+.page-sub{color:var(--muted);font-size:12.5px;margin:0 0 18px;}
+
+/* ===== CARD / GRID ===== */
+.card{background:var(--card);border:1px solid var(--border-soft);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+.grid{display:grid;gap:14px;}
+.grid-kpi{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+.grid-2{grid-template-columns:1fr 1fr;}
+.grid-3{grid-template-columns:1fr 1fr 1fr;}
+@media(max-width:1100px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+.kpi-card{padding:16px;position:relative;overflow:hidden;}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.kpi-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.kpi-icon svg{width:17px;height:17px;color:#fff;}
+.kpi-title{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:0.3px;}
+.kpi-value{font-size:20px;font-weight:800;margin:2px 0 6px;}
+.kpi-trend{font-size:11.5px;display:flex;align-items:center;gap:4px;}
+.trend-up{color:var(--green);} .trend-down{color:var(--red);} .trend-flat{color:var(--muted);}
+
+.section-title{font-size:14.5px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;justify-content:space-between;}
+.chip{font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid var(--border);color:var(--muted);background:rgba(255,255,255,0.02);cursor:pointer;white-space:nowrap;}
+.chip.active{background:var(--grad-1);color:#fff;border-color:transparent;}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.select, .input, .dateinput{background:var(--bg-2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 10px;font-size:12.5px;outline:none;}
+.select:focus,.input:focus{border-color:var(--purple);}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12.5px;font-weight:600;}
+.btn:hover{background:var(--card-hover);}
+.btn svg{width:15px;height:15px;}
+.btn-primary{background:var(--grad-1);border:none;color:#fff;box-shadow:0 4px 18px rgba(139,92,246,0.35);}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-danger{background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.35);color:#fca5b5;}
+.btn-sm{padding:5px 9px;font-size:11.5px;}
+.btn-icon{padding:7px;}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border-soft);}
+thead th{position:sticky;top:0;background:var(--bg-2);color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;white-space:nowrap;border-bottom:1px solid var(--border);font-size:11.5px;}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border-soft);white-space:nowrap;}
+tbody tr:hover{background:rgba(255,255,255,0.02);}
+.badge{padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:600;display:inline-block;white-space:nowrap;}
+.b-pending{background:rgba(245,158,11,0.15);color:var(--yellow);}
+.b-confirmed{background:rgba(59,130,246,0.15);color:var(--blue);}
+.b-shipping{background:rgba(34,211,238,0.15);color:var(--cyan);}
+.b-success{background:rgba(34,197,94,0.15);color:var(--green);}
+.b-return{background:rgba(244,63,94,0.15);color:var(--red);}
+.b-cancelled{background:rgba(148,163,184,0.15);color:#94a3b8;}
+.b-green{background:rgba(34,197,94,0.15);color:var(--green);}
+.b-yellow{background:rgba(245,158,11,0.15);color:var(--yellow);}
+.b-red{background:rgba(244,63,94,0.15);color:var(--red);}
+.b-purple{background:rgba(139,92,246,0.18);color:#c4b5fd;}
+.row-actions{display:flex;gap:6px;}
+.row-actions button{background:var(--card);border:1px solid var(--border-soft);color:var(--muted);border-radius:7px;padding:5px;}
+.row-actions button:hover{color:var(--text);background:var(--card-hover);}
+.row-actions svg{width:14px;height:14px;display:block;}
+.pagination{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:12px;color:var(--muted);}
+.pagination button{background:var(--card);border:1px solid var(--border-soft);color:var(--text);border-radius:7px;padding:5px 10px;}
+.pagination button:disabled{opacity:.35;}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty-state svg{width:38px;height:38px;color:var(--muted-2);margin-bottom:10px;}
+
+/* modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(2,4,14,0.65);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px;}
+.modal{background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:inherit;z-index:2;}
+.modal-header h3{margin:0;font-size:15px;}
+.modal-body{padding:18px 20px;}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border-soft);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:inherit;}
+.close-x{background:transparent;border:none;color:var(--muted);}
+.form-row{margin-bottom:13px;}
+.form-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;}
+.form-row .input,.form-row .select,.form-row textarea{width:100%;}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+textarea.input{resize:vertical;min-height:60px;}
+
+/* toast */
+#toast-wrap{position:fixed;top:16px;right:16px;z-index:400;display:flex;flex-direction:column;gap:8px;}
+.toast{padding:11px 16px;border-radius:11px;font-size:12.5px;font-weight:600;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:220px;animation:slidein .25s ease;border:1px solid rgba(255,255,255,0.12);}
+@keyframes slidein{from{transform:translateX(30px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+.toast.success{background:linear-gradient(135deg,#16a34a,#22c55e);}
+.toast.error{background:linear-gradient(135deg,#dc2626,#f43f5e);}
+.toast.warning{background:linear-gradient(135deg,#b45309,#f59e0b);}
+
+.progress-outer{height:8px;border-radius:6px;background:rgba(255,255,255,0.06);overflow:hidden;}
+.progress-inner{height:100%;border-radius:6px;background:var(--grad-1);}
+
+.insight-box{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(236,72,153,0.05));display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;}
+.insight-box svg{width:16px;height:16px;color:#c4b5fd;flex-shrink:0;margin-top:2px;}
+.insight-box p{margin:0;font-size:12.5px;color:#e5e7f5;line-height:1.5;}
+
+.kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;}
+.kanban-col{background:var(--card);border:1px solid var(--border-soft);border-radius:12px;min-width:230px;flex:0 0 230px;padding:10px;max-height:70vh;overflow-y:auto;}
+.kanban-col h4{font-size:12px;margin:2px 4px 10px;color:var(--muted);display:flex;justify-content:space-between;}
+.kanban-card{background:var(--bg-2);border:1px solid var(--border-soft);border-radius:10px;padding:10px;margin-bottom:8px;cursor:grab;font-size:12px;}
+.kanban-card:hover{border-color:var(--purple);}
+.kanban-card b{display:block;font-size:12.5px;margin-bottom:3px;}
+.kanban-card .kc-meta{color:var(--muted);font-size:11px;margin-top:4px;}
+.kanban-col.dragover{outline:1.5px dashed var(--purple);}
+
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.tab-btn{padding:8px 14px;border-radius:10px;border:1px solid var(--border-soft);background:var(--card);color:var(--muted);font-size:12.5px;font-weight:600;}
+.tab-btn.active{background:var(--grad-2);color:#fff;border-color:transparent;}
+
+.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;}
+.two-col{display:grid;grid-template-columns:2fr 1fr;gap:14px;}
+@media(max-width:1100px){.two-col{grid-template-columns:1fr;}}
+.mini-bar{height:6px;border-radius:4px;background:rgba(255,255,255,0.06);overflow:hidden;margin-top:4px;}
+.mini-bar-fill{height:100%;border-radius:4px;}
+hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
+.muted{color:var(--muted);}
+.mono{font-variant-numeric:tabular-nums;}
+.stat-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+.stat-line:last-child{border-bottom:none;}
+.notif-item{padding:10px;border-radius:10px;border:1px solid var(--border-soft);margin-bottom:8px;font-size:12px;display:flex;gap:8px;}
+.notif-item svg{width:15px;height:15px;flex-shrink:0;margin-top:1px;}
+.hidden{display:none!important;}
+.overlay-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:45;display:none;}
+.overlay-bg.show{display:block;}
+
+@media(max-width:900px){
+  .sidebar{position:fixed;left:-270px;top:0;height:100vh;z-index:100;transition:left .2s ease;width:258px!important;}
+  .sidebar.mobile-open{left:0;}
+  .hamburger{display:flex;}
+  .search-box{display:none;}
+  .grid-kpi{grid-template-columns:repeat(2,1fr);}
+  .content{padding:14px;}
+  .form-grid2{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div id="toast-wrap"></div>
+<div class="overlay-bg" id="overlayBg" onclick="closeMobileSidebar()"></div>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   ECOM DIGITAL — Ecommerce Business Management System
+   Single-file app. State + calculations + storage + UI.
+   ========================================================= */
+
+/* ---------------- CONSTANTS ---------------- */
+const LS_KEY = 'ecomDigitalData';
+const ORDER_STATUSES = ['pending','confirmed','shipping','success','return','cancelled'];
+const ORDER_STATUS_LABEL = {pending:'Chờ xử lý',confirmed:'Đã xác nhận',shipping:'Đang giao',success:'Thành công',return:'Hoàn',cancelled:'Hủy'};
+const BOOKING_STATUSES = ['lead','contacted','responded','negotiating','confirmed','sent','received','posted','tracking','done','cancelled'];
+const BOOKING_STATUS_LABEL = {lead:'Lead',contacted:'Đã liên hệ',responded:'Đã phản hồi',negotiating:'Đàm phán',confirmed:'Chốt booking',sent:'Đã gửi sản phẩm',received:'Đã nhận sản phẩm',posted:'Đã đăng',tracking:'Đang theo dõi',done:'Hoàn thành',cancelled:'Hủy'};
+const KOC_STATUSES = ['potential','contacting','sent','received','producing','posted','running','paused','stopped'];
+const KOC_STATUS_LABEL = {potential:'Tiềm năng',contacting:'Đang liên hệ',sent:'Đã gửi mẫu',received:'Đã nhận mẫu',producing:'Đang làm nội dung',posted:'Đã đăng',running:'Đang chạy',paused:'Tạm dừng',stopped:'Không hợp tác'};
+const EXPENSE_TYPES = [
+  {id:'platform_fee',name:'Phí sàn',variable:true},
+  {id:'payment_fee',name:'Phí thanh toán',variable:true},
+  {id:'shipping_fee',name:'Phí vận chuyển',variable:true},
+  {id:'ads',name:'Phí quảng cáo',variable:true},
+  {id:'koc_commission',name:'Hoa hồng KOC',variable:true},
+  {id:'cogs',name:'Giá vốn',variable:true},
+  {id:'import',name:'Chi phí nhập hàng',variable:true},
+  {id:'packaging',name:'Chi phí đóng gói',variable:true},
+  {id:'warehouse',name:'Chi phí kho',variable:false},
+  {id:'staff',name:'Chi phí nhân sự',variable:false},
+  {id:'software',name:'Chi phí phần mềm',variable:false},
+  {id:'marketing_other',name:'Chi phí marketing',variable:true},
+  {id:'other',name:'Chi phí khác',variable:false},
+];
+const ICONS = {
+  dashboard:'layout-dashboard', orders:'shopping-cart', products:'package', revenue:'trending-up',
+  refund:'rotate-ccw', inventory:'boxes', finance:'wallet', income:'arrow-down-circle',
+  expense:'arrow-up-circle', cogs:'tag', profit:'piggy-bank', settlement:'scale', cashflow:'waves',
+  debt:'file-text', koc:'users', kocgroup:'group', campaign:'megaphone', booking:'kanban',
+  commission:'hand-coins', kocperf:'bar-chart-3', kocpay:'credit-card', marketing:'target',
+  roas:'gauge', roi:'trending-up', cac:'user-plus', reports:'file-bar-chart', settings:'settings',
+  bell:'bell', search:'search', menu:'menu', chevronLeft:'chevron-left', chevronRight:'chevron-right',
+  plus:'plus', edit:'pencil', trash:'trash-2', eye:'eye', download:'download', upload:'upload',
+  x:'x', check:'check', alert:'alert-triangle', info:'info', star:'sparkles', save:'save',
+  business:'building-2', category:'tags', backup:'database', money:'banknote'
+};
+function icon(name,sz=17){ return `<i data-lucide="${ICONS[name]||name}" style="width:${sz}px;height:${sz}px"></i>`; }
+
+/* ---------------- UTILITIES ---------------- */
+function uid(prefix){ return prefix+'_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function formatCurrency(v){
+  if(v===null||v===undefined||isNaN(v)) v=0;
+  v = Math.round(v);
+  return v.toLocaleString('vi-VN')+' ₫';
+}
+function formatNumber(v){ if(v===null||v===undefined||isNaN(v)) v=0; return Math.round(v).toLocaleString('vi-VN'); }
+function formatPct(v){ if(v===null||v===undefined||isNaN(v)||!isFinite(v)) v=0; return v.toFixed(1)+'%'; }
+function safeDiv(a,b){ if(!b) return 0; const r=a/b; return isFinite(r)?r:0; }
+function fmtDate(d){ if(!d) return ''; const dt=new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString('vi-VN'); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function addDays(dateStr,n){ const d=new Date(dateStr); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function escapeHtml(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function debounce(fn,ms){ let t; return (...a)=>{clearTimeout(t); t=setTimeout(()=>fn(...a),ms);} }
+
+function toast(msg,type='success'){
+  const wrap=document.getElementById('toast-wrap');
+  const el=document.createElement('div');
+  el.className='toast '+type;
+  el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); },2600);
+}
+function confirmAction(msg,onYes){
+  openModal({
+    title:'Xác nhận',
+    bodyHtml:`<p style="font-size:13px;line-height:1.6">${escapeHtml(msg)}</p>`,
+    footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-danger" id="confirmYesBtn">Xác nhận</button>`,
+  });
+  document.getElementById('confirmYesBtn').onclick=()=>{ closeModal(); onYes(); };
+}
+
+/* ---------------- STATE ---------------- */
+let state = null;
+
+function defaultState(){
+  return {
+    settings:{
+      business:{name:'ECOM DIGITAL', email:'contact@ecomdigital.vn', phone:'0909 000 000'},
+      lowStockThreshold:15,
+      productMarginThresholds:{high:30,low:10},
+      kocScoring:{revenue:30,orders:20,roas:15,roi:15,engagement:10,conversion:10},
+    },
+    platforms:[
+      {id:'p_tiktok',name:'TikTok Shop',feePct:4,paymentFeePct:1.5,shippingFeeDefault:15000},
+      {id:'p_shopee',name:'Shopee',feePct:5,paymentFeePct:2,shippingFeeDefault:16000},
+      {id:'p_lazada',name:'Lazada',feePct:4.5,paymentFeePct:1.8,shippingFeeDefault:17000},
+      {id:'p_other',name:'Khác',feePct:3,paymentFeePct:1.5,shippingFeeDefault:15000},
+    ],
+    categories:[{id:'c1',name:'Mỹ phẩm'},{id:'c2',name:'Gia dụng'},{id:'c3',name:'Thời trang'},{id:'c4',name:'Thực phẩm'},{id:'c5',name:'Phụ kiện'}],
+    products:[],
+    orders:[],
+    expenses:[],
+    kocGroups:[
+      {id:'g_vip',name:'KOC VIP'},{id:'g_a',name:'KOC A'},{id:'g_b',name:'KOC B'},{id:'g_c',name:'KOC C'},{id:'g_new',name:'KOC mới'},
+    ],
+    kocs:[],
+    campaigns:[],
+    bookings:[],
+    ads:[],
+    employees:[
+      {id:uid('emp'),name:'Phương Anh',dept:'Marketing',role:'KOC Manager'},
+      {id:uid('emp'),name:'Minh Phạm',dept:'Sales',role:'Sales Executive'},
+      {id:uid('emp'),name:'Hải Yến',dept:'Marketing',role:'Content'},
+    ],
+  };
+}
+
+function saveData(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e){ toast('Lỗi lưu dữ liệu: '+e.message,'error'); }
+  scheduleSupabasePush();
+}
+function loadData(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ state = JSON.parse(raw); return true; }
+  }catch(e){ console.error(e); }
+  return false;
+}
+function resetData(){
+  state = defaultState();
+  generateDemoData();
+  saveData();
+}
+function clearAllData(){
+  state = defaultState();
+  saveData();
+}
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download = 'ecom-digital-backup-'+todayISO()+'.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Đã tải file backup thành công','success');
+}
+function importBackup(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.orders || !data.products){ throw new Error('File không đúng định dạng'); }
+      state = Object.assign(defaultState(), data);
+      saveData();
+      toast('Khôi phục dữ liệu thành công','success');
+      navigate(currentRoute);
+    }catch(err){ toast('Lỗi restore: '+err.message,'error'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ================= SUPABASE SYNC =================
+   ECOM DIGITAL lưu toàn bộ `state` dưới dạng 1 bản ghi JSONB duy nhất
+   trong bảng `ecom_digital_data`, khóa chính là "Mã cửa hàng" (storeId).
+   Nhờ vậy không cần đổi cấu trúc dữ liệu hiện có, chỉ cần đồng bộ
+   JSON qua lại giữa localStorage (offline-first) và Supabase (cloud).
+==================================================== */
+const SUPABASE_CFG_KEY = 'ecomDigitalSupabaseConfig';
+const SUPABASE_TABLE = 'ecom_digital_data';
+let supabaseClient = null;
+let supabaseStatus = 'disconnected'; // disconnected | connecting | connected | error
+let supabaseStatusMsg = '';
+let supabasePushTimer = null;
+let supabaseSyncing = false;
+
+const DEFAULT_SUPABASE_CONFIG = {
+  url: 'https://pyqatxrtqmrepyagzpug.supabase.co',
+  anonKey: 'sb_publishable_mw9FAd_US_PPW7Z9oBerFQ_HYl5ybx6',
+  storeId: 'default',
+  autoSync: true
+};
+
+function getSupabaseConfig(){
+  try{
+    const raw = localStorage.getItem(SUPABASE_CFG_KEY);
+    return raw ? {...DEFAULT_SUPABASE_CONFIG, ...JSON.parse(raw)} : {...DEFAULT_SUPABASE_CONFIG};
+  }catch(e){
+    return {...DEFAULT_SUPABASE_CONFIG};
+  }
+}
+function setSupabaseConfig(cfg){
+  localStorage.setItem(SUPABASE_CFG_KEY, JSON.stringify(cfg));
+}
+function clearSupabaseConfig(){
+  localStorage.removeItem(SUPABASE_CFG_KEY);
+  supabaseClient = null;
+  supabaseStatus = 'disconnected';
+  supabaseStatusMsg = '';
+}
+function initSupabaseClient(){
+  const cfg = getSupabaseConfig();
+  if(!cfg || !cfg.url || !cfg.anonKey){ supabaseClient=null; supabaseStatus='disconnected'; return null; }
+  try{
+    supabaseClient = supabase.createClient(cfg.url, cfg.anonKey);
+    return supabaseClient;
+  }catch(e){
+    supabaseClient = null; supabaseStatus='error'; supabaseStatusMsg = e.message;
+    return null;
+  }
+}
+function ensureSupabaseClient(){
+  if(supabaseClient) return supabaseClient;
+  return initSupabaseClient();
+}
+async function testSupabaseConnection(){
+  const cfg = getSupabaseConfig();
+  if(!cfg){ supabaseStatus='disconnected'; return; }
+  const client = ensureSupabaseClient();
+  if(!client){ supabaseStatus='error'; supabaseStatusMsg='Không khởi tạo được kết nối'; return; }
+  supabaseStatus = 'connecting';
+  try{
+    const { error } = await client.from(SUPABASE_TABLE).select('id').eq('id', cfg.storeId||'default').limit(1);
+    if(error) throw error;
+    supabaseStatus = 'connected'; supabaseStatusMsg='';
+  }catch(e){
+    supabaseStatus = 'error';
+    supabaseStatusMsg = e.message || 'Không thể kết nối tới Supabase';
+  }
+}
+function scheduleSupabasePush(){
+  const cfg = getSupabaseConfig();
+  if(!cfg || !cfg.autoSync) return;
+  clearTimeout(supabasePushTimer);
+  supabasePushTimer = setTimeout(()=>{ pushStateToSupabase(true); }, 1500);
+}
+async function pushStateToSupabase(silent){
+  const cfg = getSupabaseConfig();
+  if(!cfg){ if(!silent) toast('Chưa cấu hình Supabase','warning'); return; }
+  const client = ensureSupabaseClient();
+  if(!client){ if(!silent) toast('Không khởi tạo được kết nối Supabase','error'); return; }
+  supabaseSyncing = true;
+  try{
+    const { error } = await client.from(SUPABASE_TABLE).upsert({
+      id: cfg.storeId || 'default',
+      data: state,
+      updated_at: new Date().toISOString(),
+    });
+    if(error) throw error;
+    supabaseStatus = 'connected'; supabaseStatusMsg='';
+    if(!silent) toast('Đã đồng bộ dữ liệu lên Supabase thành công','success');
+  }catch(e){
+    supabaseStatus = 'error'; supabaseStatusMsg = e.message || 'Lỗi đồng bộ';
+    if(!silent) toast('Lỗi đồng bộ Supabase: '+(e.message||''),'error');
+  }
+  supabaseSyncing = false;
+  if(mainState.settings && mainState.settings.tab==='supabase') render();
+}
+async function pullStateFromSupabase(silent){
+  const cfg = getSupabaseConfig();
+  if(!cfg){ if(!silent) toast('Chưa cấu hình Supabase','warning'); return false; }
+  const client = ensureSupabaseClient();
+  if(!client){ if(!silent) toast('Không khởi tạo được kết nối Supabase','error'); return false; }
+  supabaseSyncing = true;
+  try{
+    const { data, error } = await client.from(SUPABASE_TABLE).select('data').eq('id', cfg.storeId||'default').maybeSingle();
+    if(error) throw error;
+    supabaseStatus = 'connected'; supabaseStatusMsg='';
+    supabaseSyncing = false;
+    if(data && data.data){
+      state = Object.assign(defaultState(), data.data);
+      saveData();
+      if(!silent) toast('Đã tải dữ liệu từ Supabase thành công','success');
+      return true;
+    } else {
+      if(!silent) toast('Chưa có dữ liệu trên Supabase cho mã cửa hàng này','warning');
+      return false;
+    }
+  }catch(e){
+    supabaseSyncing = false;
+    supabaseStatus = 'error'; supabaseStatusMsg = e.message || 'Lỗi tải dữ liệu';
+    if(!silent) toast('Lỗi tải dữ liệu từ Supabase: '+(e.message||''),'error');
+    return false;
+  }
+}
+function saveSupabaseSettingsForm(){
+  const url = document.getElementById('sbUrl').value.trim();
+  const anonKey = document.getElementById('sbKey').value.trim();
+  const storeId = document.getElementById('sbStoreId').value.trim() || 'default';
+  const autoSync = document.getElementById('sbAutoSync').checked;
+  if(!url || !anonKey){ toast('Vui lòng nhập đầy đủ Project URL và Anon Key','error'); return; }
+  setSupabaseConfig({url, anonKey, storeId, autoSync});
+  initSupabaseClient();
+  toast('Đã lưu cấu hình Supabase','success');
+  testSupabaseConnection().then(render);
+  render();
+}
+function disconnectSupabase(){
+  confirmAction('Ngắt kết nối Supabase? Dữ liệu vẫn được lưu trên trình duyệt (localStorage).', ()=>{
+    clearSupabaseConfig(); closeModal(); render(); toast('Đã ngắt kết nối Supabase','success');
+  });
+}
+function confirmPullFromSupabase(){
+  confirmAction('Thao tác này sẽ GHI ĐÈ toàn bộ dữ liệu hiện tại trên trình duyệt bằng dữ liệu mới nhất trên Supabase. Tiếp tục?', async ()=>{
+    closeModal();
+    await pullStateFromSupabase(false);
+    render();
+  });
+}
+function copySupabaseSql(){
+  const el = document.getElementById('sbSqlBox');
+  el.select(); el.setSelectionRange(0,999999);
+  try{ document.execCommand('copy'); toast('Đã copy đoạn SQL','success'); }
+  catch(e){ toast('Không thể copy tự động, vui lòng bôi đen và copy thủ công','warning'); }
+}
+const SUPABASE_SQL = `-- Chạy đoạn SQL này trong Supabase SQL Editor (1 lần duy nhất)
+create table if not exists ecom_digital_data (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table ecom_digital_data enable row level security;
+
+-- Cho phép đọc/ghi bằng anon key (vì app chạy hoàn toàn ở trình duyệt, không có backend riêng)
+create policy "ecom_digital_select" on ecom_digital_data
+  for select using (true);
+create policy "ecom_digital_insert" on ecom_digital_data
+  for insert with check (true);
+create policy "ecom_digital_update" on ecom_digital_data
+  for update using (true) with check (true);`;
+
+/* ---------------- DEMO DATA GENERATION ---------------- */
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(arr){ return arr[rand(0,arr.length-1)]; }
+function generateDemoData(){
+  const platforms = state.platforms;
+  const cats = state.categories;
+  const productNames = ['Serum Vitamin C','Kem chống nắng SPF50','Nồi chiên không dầu','Máy xay sinh tố mini','Áo thun cotton nam','Váy suông nữ','Snack rong biển','Trà giảm cân thảo mộc','Ốp lưng iPhone','Tai nghe bluetooth','Đèn LED để bàn','Bình giữ nhiệt 500ml','Túi xách da PU','Giày sneaker unisex','Mặt nạ dưỡng da','Dầu gội thảo dược','Máy massage cầm tay','Balo laptop chống nước','Kính mát thời trang','Sạc dự phòng 10000mAh'];
+  state.products = [];
+  for(let i=0;i<20;i++){
+    const importPrice = rand(30,300)*1000;
+    const cost = Math.round(importPrice*1.05);
+    const sell = Math.round(cost*(1.6+Math.random()*1.2)/1000)*1000;
+    state.products.push({
+      id:uid('prod'), sku:'SKU'+String(i+1).padStart(3,'0'), name:productNames[i]||('Sản phẩm '+(i+1)),
+      category:pick(cats).id, platformId:pick(platforms).id, importPrice, sellPrice:sell, costPrice:cost,
+      platformFeePct: +(rand(20,80)/10).toFixed(1), platformManagementFee: rand(1,15)*1000, status:'active'
+    });
+  }
+  state.categories = cats;
+
+  state.kocGroups.forEach(()=>{});
+  const kocNames = ['Ngọc Anh Beauty','Minh Khang Review','Thảo Vy Store','Bảo Trân Daily','Quang Huy Tech','Linh Chi Cosmetic','Gia Hân Lifestyle','Đức Anh Gadget','Thu Hà Fashion','Việt Hoàng Fitness','Mỹ Duyên Vlog','Anh Tuấn Unbox','Kim Ngân Beauty','Hoàng Long Sport','Phương Thảo Home','Đăng Khoa Tech','Yến Nhi Style','Trung Kiên Review','Bích Ngọc Daily','Nam Phong Gadget'];
+  state.kocs = [];
+  kocNames.forEach((name,i)=>{
+    const phone = '09'+rand(10000000,99999999);
+    state.kocs.push({
+      id:uid('koc'), name, username:'@'+name.toLowerCase().replace(/\s+/g,''),
+      platform: pick(['TikTok','Facebook','Instagram']), link:'https://tiktok.com/@'+name.toLowerCase().replace(/\s+/g,''),
+      groupId: pick(state.kocGroups).id, ownerId: pick(state.employees).id,
+      status: pick(KOC_STATUSES), followers: rand(5000,800000), engagement: +(Math.random()*8+1).toFixed(1),
+      videos: rand(1,20), dateLast: addDays(todayISO(), -rand(1,60)),
+      contact: phone, gmvMonthly: rand(5,120)*1000000,
+    });
+  });
+
+  state.campaigns = [];
+  for(let i=0;i<5;i++){
+    const start = addDays(todayISO(), -rand(20,90));
+    const budget = rand(5,40)*1000000;
+    const actualCost = Math.round(budget*(0.6+Math.random()*0.6));
+    const actualRevenue = Math.round(actualCost*(1+Math.random()*2.5));
+    state.campaigns.push({
+      id:uid('camp'), name:'Chiến dịch '+['Mùa hè rực rỡ','Sale 9.9','Back to school','Tết sum vầy','Flash Sale cuối tuần'][i],
+      start, end: addDays(start, rand(10,30)), productId: pick(state.products).id, platformId: pick(platforms).id,
+      budget, actualRevenue, actualCost, kocCount: rand(2,15), note:'',
+    });
+  }
+
+  state.bookings = [];
+  for(let i=0;i<14;i++){
+    const koc = pick(state.kocs);
+    state.bookings.push({
+      id:uid('bk'), kocId:koc.id, productId: pick(state.products).id, priceBooking: rand(0,5)*500000,
+      commissionPct: rand(8,20), deadline: addDays(todayISO(), rand(-5,20)), status: pick(BOOKING_STATUSES),
+    });
+  }
+
+  // orders
+  state.orders = [];
+  const custNames=['Nguyễn Văn A','Trần Thị B','Lê Văn C','Phạm Thị D','Hoàng Văn E','Vũ Thị F','Đặng Văn G','Bùi Thị H'];
+  for(let i=0;i<130;i++){
+    const product = pick(state.products);
+    const platform = state.platforms.find(p=>p.id===product.platformId) || pick(platforms);
+    const daysAgo = rand(0,89);
+    const date = addDays(todayISO(), -daysAgo);
+    const hasKoc = Math.random()<0.45;
+    const koc = hasKoc? pick(state.kocs): null;
+    const camp = hasKoc && Math.random()<0.6 ? pick(state.campaigns.filter(c=>c.productId===product.id)) : null;
+    const qty = rand(1,4);
+    let status = 'success';
+    const r = Math.random();
+    if(r<0.06) status='pending'; else if(r<0.11) status='confirmed'; else if(r<0.16) status='shipping';
+    else if(r<0.22) status='return'; else if(r<0.27) status='cancelled'; else status='success';
+    state.orders.push({
+      id:uid('ord'), code:'ORD'+String(20000+i), date, platformId: platform.id, customer: pick(custNames),
+      productId: product.id, sku: product.sku, qty, sellPrice: product.sellPrice, discount: Math.round(product.sellPrice*qty*(Math.random()<0.3? rand(2,10)/100:0)),
+      shippingFeeSeller: Math.random()<0.4? platform.shippingFeeDefault:0,
+      kocId: koc? koc.id:null, campaignId: camp? camp.id:null,
+      adsCostAllocated: (!koc && Math.random()<0.5)? rand(5,40)*1000: 0,
+      status, refundReason: status==='return'? pick(['Sản phẩm lỗi','Không đúng mô tả','Đổi ý','Giao hàng chậm']): '',
+    });
+  }
+
+  // expenses (fixed & other, variable ones mostly derived from orders/ads/koc but we also log entries)
+  state.expenses = [];
+  const fixedTypes=['warehouse','staff','software','other'];
+  for(let i=0;i<10;i++){
+    const type = pick(fixedTypes.concat(['marketing_other','packaging']));
+    state.expenses.push({
+      id:uid('exp'), date: addDays(todayISO(), -rand(0,89)), docNo:'CT'+String(1000+i),
+      type, platformId:null, campaignId:null, kocId:null, productId:null,
+      amount: rand(2,25)*1000000, note: EXPENSE_TYPES.find(t=>t.id===type).name+' tháng',
+      isVariable: EXPENSE_TYPES.find(t=>t.id===type).variable,
+    });
+  }
+
+  // ads
+  state.ads = [];
+  state.campaigns.forEach(camp=>{
+    for(let i=0;i<5;i++){
+      const impressions = rand(2000,60000);
+      const clicks = Math.round(impressions*(rand(2,8)/100));
+      const orders = Math.round(clicks*(rand(2,10)/100));
+      const cost = rand(200,3000)*1000;
+      const revenue = orders * (state.products.find(p=>p.id===camp.productId)?.sellPrice||150000) * rand(1,2);
+      state.ads.push({
+        id:uid('ad'), campaign:camp.id, platformId:camp.platformId, date: addDays(camp.start, i*3),
+        productId:camp.productId, cost, revenue, orders, clicks, impressions,
+      });
+    }
+  });
+
+}
+
+/* ---------------- CALCULATION ENGINE ---------------- */
+function getPlatform(id){ return state.platforms.find(p=>p.id===id); }
+function getProduct(id){ return state.products.find(p=>p.id===id); }
+function getKoc(id){ return state.kocs.find(k=>k.id===id); }
+function getCampaign(id){ return state.campaigns.find(c=>c.id===id); }
+function getKocGroup(id){ return state.kocGroups.find(g=>g.id===id); }
+function getEmployee(id){ return state.employees.find(e=>e.id===id); }
+
+function kocCommissionPctFor(order){
+  if(!order.kocId) return 0;
+  const bk = state.bookings.find(b=>b.kocId===order.kocId && b.productId===order.productId);
+  return bk ? bk.commissionPct : 10;
+}
+
+// Full computed financials for a single order (always computed, aggregation decides inclusion by status)
+function calcOrder(order){
+  const platform = getPlatform(order.platformId) || {paymentFeePct:0};
+  const product = getProduct(order.productId) || {costPrice:0, platformFeePct:0, platformManagementFee:0};
+  const grossRevenue = (order.sellPrice||0) * (order.qty||0);
+  const netRevenue = Math.max(0, grossRevenue - (order.discount||0));
+  const platformFee = netRevenue * (product.platformFeePct||0) / 100;
+  const managementFee = (product.platformManagementFee||0) * (order.qty||0);
+  const paymentFee = netRevenue * (platform.paymentFeePct||0) / 100;
+  const kocPct = kocCommissionPctFor(order);
+  const kocCommission = netRevenue * kocPct / 100;
+  const adsCost = order.adsCostAllocated || 0;
+  const shippingFee = order.shippingFeeSeller || 0;
+  const netReceived = netRevenue - platformFee - managementFee - paymentFee - shippingFee;
+  const cogs = (product.costPrice||0) * (order.qty||0);
+  const grossProfit = netReceived - cogs;
+  const netProfit = netReceived - cogs - kocCommission - adsCost;
+  const margin = safeDiv(netProfit, netRevenue) * 100;
+  return {grossRevenue,netRevenue,platformFee,managementFee,paymentFee,kocCommission,adsCost,shippingFee,netReceived,cogs,grossProfit,netProfit,margin};
+}
+function isCounted(order){ return order.status==='success'; }
+
+function filterOrders(orders, f){
+  f = f||{};
+  return orders.filter(o=>{
+    if(f.dateFrom && o.date < f.dateFrom) return false;
+    if(f.dateTo && o.date > f.dateTo) return false;
+    if(f.platformId && f.platformId!=='all' && o.platformId!==f.platformId) return false;
+    if(f.productId && o.productId!==f.productId) return false;
+    if(f.kocId && o.kocId!==f.kocId) return false;
+    if(f.kocGroupId){ const k=getKoc(o.kocId); if(!k || k.groupId!==f.kocGroupId) return false; }
+    if(f.campaignId && o.campaignId!==f.campaignId) return false;
+    if(f.status && f.status!=='all' && o.status!==f.status) return false;
+    if(f.search){
+      const s=f.search.toLowerCase();
+      const prod=getProduct(o.productId);
+      const hay=(o.code+' '+o.customer+' '+o.sku+' '+(prod?prod.name:'')).toLowerCase();
+      if(!hay.includes(s)) return false;
+    }
+    return true;
+  });
+}
+function filterExpenses(expenses,f){
+  f=f||{};
+  return expenses.filter(e=>{
+    if(f.dateFrom && e.date<f.dateFrom) return false;
+    if(f.dateTo && e.date>f.dateTo) return false;
+    if(f.platformId && f.platformId!=='all' && e.platformId && e.platformId!==f.platformId) return false;
+    return true;
+  });
+}
+
+function dateRangeFor(preset){
+  const today = todayISO();
+  switch(preset){
+    case 'today': return {from:today,to:today};
+    case '7d': return {from:addDays(today,-6),to:today};
+    case '30d': return {from:addDays(today,-29),to:today};
+    case 'this_month':{ const d=new Date(); return {from:new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10), to:today}; }
+    case 'last_month':{ const d=new Date(); const first=new Date(d.getFullYear(),d.getMonth()-1,1); const last=new Date(d.getFullYear(),d.getMonth(),0); return {from:first.toISOString().slice(0,10), to:last.toISOString().slice(0,10)}; }
+    case 'this_quarter':{ const d=new Date(); const q=Math.floor(d.getMonth()/3); const first=new Date(d.getFullYear(),q*3,1); return {from:first.toISOString().slice(0,10), to:today}; }
+    case 'this_year':{ const d=new Date(); return {from:new Date(d.getFullYear(),0,1).toISOString().slice(0,10), to:today}; }
+    default: return {from:addDays(today,-29),to:today};
+  }
+}
+function prevRange(from,to){
+  const span = daysBetween(from,to)+1;
+  return {from:addDays(from,-span), to:addDays(from,-1)};
+}
+
+function aggregateOrders(orders){
+  let grossRevenue=0,netRevenue=0,cogs=0,platformFee=0,managementFee=0,paymentFee=0,kocCommission=0,adsCost=0,shippingFee=0,netReceived=0,netProfit=0,grossProfit=0;
+  let totalOrders=orders.length, successOrders=0, returnOrders=0, cancelOrders=0;
+  orders.forEach(o=>{
+    if(o.status==='return') returnOrders++;
+    if(o.status==='cancelled') cancelOrders++;
+    if(isCounted(o)){
+      successOrders++;
+      const c=calcOrder(o);
+      grossRevenue+=c.grossRevenue; netRevenue+=c.netRevenue; cogs+=c.cogs; platformFee+=c.platformFee; managementFee+=c.managementFee;
+      paymentFee+=c.paymentFee; kocCommission+=c.kocCommission; adsCost+=c.adsCost; shippingFee+=c.shippingFee;
+      netReceived+=c.netReceived; grossProfit+=c.grossProfit; netProfit+=c.netProfit;
+    }
+  });
+  return {grossRevenue,netRevenue,cogs,platformFee,managementFee,paymentFee,kocCommission,adsCost,shippingFee,netReceived,grossProfit,netProfit,
+    totalOrders,successOrders,returnOrders,cancelOrders, margin: safeDiv(netProfit,netRevenue)*100};
+}
+
+function computeDashboard(filters){
+  const orders = filterOrders(state.orders, filters);
+  const cur = aggregateOrders(orders);
+  const pr = prevRange(filters.dateFrom, filters.dateTo);
+  const prevOrders = filterOrders(state.orders, Object.assign({},filters,{dateFrom:pr.from,dateTo:pr.to}));
+  const prev = aggregateOrders(prevOrders);
+
+  const expenses = filterExpenses(state.expenses, filters);
+  const fixedCost = expenses.filter(e=>!e.isVariable).reduce((s,e)=>s+e.amount,0);
+  const otherVarCost = expenses.filter(e=>e.isVariable).reduce((s,e)=>s+e.amount,0);
+  const totalCost = cur.cogs + cur.platformFee + cur.managementFee + cur.paymentFee + cur.kocCommission + cur.adsCost + cur.shippingFee + fixedCost + otherVarCost;
+  const netProfitFinal = cur.netProfit - fixedCost - otherVarCost;
+
+  const adsSpend = state.ads.filter(a=>a.date>=filters.dateFrom && a.date<=filters.dateTo && (filters.platformId==='all'||!filters.platformId||a.platformId===filters.platformId)).reduce((s,a)=>s+a.cost,0);
+  const adsRevenue = state.ads.filter(a=>a.date>=filters.dateFrom && a.date<=filters.dateTo && (filters.platformId==='all'||!filters.platformId||a.platformId===filters.platformId)).reduce((s,a)=>s+a.revenue,0);
+  const roas = safeDiv(adsRevenue, adsSpend + cur.adsCost);
+  const roi = safeDiv(netProfitFinal, totalCost)*100;
+
+  function pctChange(c,p){ if(!p) return c>0?100:0; return safeDiv(c-p,p)*100; }
+
+  return {
+    orders, cur, prev, fixedCost, otherVarCost, totalCost, netProfitFinal, roas, roi,
+    kpis:[
+      {key:'grossRevenue', title:'Tổng doanh thu', value:cur.grossRevenue, change:pctChange(cur.grossRevenue,prev.grossRevenue), icon:'revenue', grad:'var(--grad-1)'},
+      {key:'netReceived', title:'Doanh thu thực nhận', value:cur.netReceived, change:pctChange(cur.netReceived,prev.netReceived), icon:'income', grad:'var(--grad-2)'},
+      {key:'totalOrders', title:'Tổng đơn hàng', value:cur.totalOrders, change:pctChange(cur.totalOrders,prev.totalOrders), icon:'orders', grad:'var(--grad-3)', isCount:true},
+      {key:'successOrders', title:'Đơn thành công', value:cur.successOrders, change:pctChange(cur.successOrders,prev.successOrders), icon:'check', grad:'var(--grad-1)', isCount:true},
+      {key:'returnOrders', title:'Đơn hoàn', value:cur.returnOrders, change:pctChange(cur.returnOrders,prev.returnOrders), icon:'refund', grad:'var(--grad-3)', isCount:true, invert:true},
+      {key:'cancelOrders', title:'Đơn hủy', value:cur.cancelOrders, change:pctChange(cur.cancelOrders,prev.cancelOrders), icon:'x', grad:'var(--grad-3)', isCount:true, invert:true},
+      {key:'cogs', title:'Giá vốn hàng bán', value:cur.cogs, change:pctChange(cur.cogs,prev.cogs), icon:'cogs', grad:'var(--grad-2)', invert:true},
+      {key:'totalCost', title:'Tổng chi phí', value:totalCost, change:0, icon:'expense', grad:'var(--grad-2)', invert:true},
+      {key:'adsCost', title:'Chi phí quảng cáo', value:adsSpend+cur.adsCost, change:0, icon:'marketing', grad:'var(--grad-3)', invert:true},
+      {key:'kocCommission', title:'Hoa hồng KOC', value:cur.kocCommission, change:0, icon:'koc', grad:'var(--grad-1)', invert:true},
+      {key:'platformFee', title:'Phí sàn', value:cur.platformFee, change:0, icon:'settlement', grad:'var(--grad-2)', invert:true},
+      {key:'managementFee', title:'Phí quản lý sàn', value:cur.managementFee, change:0, icon:'settlement', grad:'var(--grad-2)', invert:true},
+      {key:'grossProfit', title:'Lợi nhuận gộp', value:cur.grossProfit, change:pctChange(cur.grossProfit,prev.grossProfit), icon:'profit', grad:'var(--grad-1)'},
+      {key:'netProfitFinal', title:'Lợi nhuận ròng', value:netProfitFinal, change:pctChange(netProfitFinal, prev.netProfit-fixedCost-otherVarCost), icon:'profit', grad:'var(--grad-1)'},
+      {key:'margin', title:'Biên lợi nhuận', value:safeDiv(netProfitFinal,cur.netRevenue)*100, change:0, icon:'gauge', grad:'var(--grad-2)', isPct:true},
+      {key:'roas', title:'ROAS', value:roas, change:0, icon:'roas', grad:'var(--grad-3)', isRatio:true},
+      {key:'roi', title:'ROI', value:roi, change:0, icon:'roi', grad:'var(--grad-1)', isPct:true},
+    ]
+  };
+}
+
+function computeProductMetrics(filters){
+  const orders = filterOrders(state.orders, filters);
+  return state.products.map(p=>{
+    const po = orders.filter(o=>o.productId===p.id && isCounted(o));
+    let revenue=0,cogs=0,profit=0,qty=0,platformFee=0,kocCost=0,adsCost=0;
+    po.forEach(o=>{ const c=calcOrder(o); revenue+=c.netRevenue; cogs+=c.cogs; profit+=c.netProfit; qty+=o.qty; platformFee+=c.platformFee+c.paymentFee; kocCost+=c.kocCommission; adsCost+=c.adsCost; });
+    const margin = safeDiv(profit,revenue)*100;
+    return {product:p, revenue, cogs, profit, qty, platformFee, kocCost, adsCost, margin};
+  });
+}
+
+function computeKocMetrics(filters){
+  const orders = filterOrders(state.orders, filters);
+  return state.kocs.map(k=>{
+    const ko = orders.filter(o=>o.kocId===k.id && isCounted(o));
+    let revenue=0,commission=0;
+    ko.forEach(o=>{ const c=calcOrder(o); revenue+=c.netRevenue; commission+=c.kocCommission; });
+    const bks = state.bookings.filter(b=>b.kocId===k.id);
+    const bookingCost = bks.reduce((s,b)=>s+(b.priceBooking||0),0);
+    const sampleCost = bks.length * 150000; // simplified sample cost estimate
+    const otherCost = state.expenses.filter(e=>e.kocId===k.id).reduce((s,e)=>s+e.amount,0);
+    const totalCost = commission + bookingCost + sampleCost + otherCost;
+    const profit = revenue - totalCost;
+    const roas = safeDiv(revenue, totalCost);
+    const roi = safeDiv(profit, totalCost)*100;
+    const orderCount = ko.length;
+    const cpa = safeDiv(totalCost, orderCount);
+    const aov = safeDiv(revenue, orderCount);
+    return {koc:k, revenue, commission, bookingCost, sampleCost, otherCost, totalCost, profit, roas, roi, orderCount, cpa, aov};
+  });
+}
+
+function computeKocScore(kocMetricsList){
+  const w = state.settings.kocScoring;
+  const maxRevenue = Math.max(1,...kocMetricsList.map(m=>m.revenue));
+  const maxOrders = Math.max(1,...kocMetricsList.map(m=>m.orderCount));
+  const maxRoas = Math.max(0.001,...kocMetricsList.map(m=>m.roas));
+  const maxRoi = Math.max(0.001,...kocMetricsList.map(m=>Math.max(0,m.roi)));
+  const maxEng = Math.max(0.001,...kocMetricsList.map(m=>m.koc.engagement||0));
+  return kocMetricsList.map(m=>{
+    const revN = safeDiv(m.revenue,maxRevenue)*100;
+    const ordN = safeDiv(m.orderCount,maxOrders)*100;
+    const roasN = safeDiv(m.roas,maxRoas)*100;
+    const roiN = safeDiv(Math.max(0,m.roi),maxRoi)*100;
+    const engN = safeDiv(m.koc.engagement||0,maxEng)*100;
+    const convN = ordN; // conversion proxy
+    const score = (revN*w.revenue + ordN*w.orders + roasN*w.roas + roiN*w.roi + engN*w.engagement + convN*w.conversion)/100;
+    let tier='Không hiệu quả', tierColor='b-red';
+    if(score>=80){tier='Xuất sắc';tierColor='b-green';}
+    else if(score>=65){tier='Tốt';tierColor='b-green';}
+    else if(score>=50){tier='Trung bình';tierColor='b-yellow';}
+    else if(score>=30){tier='Yếu';tierColor='b-yellow';}
+    else {tier='Không hiệu quả'; tierColor='b-red';}
+    return Object.assign({},m,{score:Math.round(score),tier,tierColor});
+  });
+}
+
+function computeCampaignMetrics(filters){
+  const orders = filterOrders(state.orders, filters);
+  return state.campaigns.map(camp=>{
+    const co = orders.filter(o=>o.campaignId===camp.id && isCounted(o));
+    let revenue=0,commission=0;
+    co.forEach(o=>{ const c=calcOrder(o); revenue+=c.netRevenue; commission+=c.kocCommission; });
+    const ads = state.ads.filter(a=>a.campaign===camp.id);
+    const adsCost = ads.reduce((s,a)=>s+a.cost,0);
+    const adsRevenue = ads.reduce((s,a)=>s+a.revenue,0);
+    const totalCost = commission + adsCost;
+    const totalRevenue = revenue + adsRevenue;
+    const profit = totalRevenue - totalCost;
+    const roas = safeDiv(totalRevenue, totalCost);
+    const roi = safeDiv(profit, totalCost)*100;
+    const kocSet = new Set(co.map(o=>o.kocId).filter(Boolean));
+    return {campaign:camp, revenue:totalRevenue, cost:totalCost, profit, roas, roi, orders:co.length+ads.reduce((s,a)=>s+a.orders,0), kocCount:kocSet.size, adsCost, adsRevenue};
+  });
+}
+
+function computeSettlement(filters){
+  return state.platforms.map(pl=>{
+    const orders = filterOrders(state.orders, Object.assign({},filters,{platformId:pl.id}));
+    const succ = orders.filter(isCounted);
+    let revenue=0,platformFee=0,managementFee=0,paymentFee=0,shippingFee=0,netReceived=0;
+    succ.forEach(o=>{ const c=calcOrder(o); revenue+=c.netRevenue; platformFee+=c.platformFee; managementFee+=c.managementFee; paymentFee+=c.paymentFee; shippingFee+=c.shippingFee; netReceived+=c.netReceived; });
+    const returns = orders.filter(o=>o.status==='return').reduce((s,o)=>s+(o.sellPrice*o.qty-o.discount),0);
+    const adjustment = 0;
+    const shouldReceive = netReceived - returns + adjustment;
+    const actualReceived = netReceived; // assume equal unless adjustments entered
+    const diff = actualReceived - shouldReceive;
+    return {platform:pl, revenue, platformFee, managementFee, paymentFee, shippingFee, returns, adjustment, shouldReceive, actualReceived, diff};
+  });
+}
+
+function computeCashFlow(filters){
+  const settlement = computeSettlement(filters);
+  const cashIn = settlement.reduce((s,x)=>s+x.actualReceived,0);
+  const expenses = filterExpenses(state.expenses, filters);
+  const cashOutExpenses = expenses.reduce((s,e)=>s+e.amount,0);
+  const orders = filterOrders(state.orders,filters).filter(isCounted);
+  const cogsOut = orders.reduce((s,o)=>s+calcOrder(o).cogs,0);
+  const kocOut = orders.reduce((s,o)=>s+calcOrder(o).kocCommission,0);
+  const adsOut = orders.reduce((s,o)=>s+calcOrder(o).adsCost,0) + state.ads.filter(a=>a.date>=filters.dateFrom&&a.date<=filters.dateTo).reduce((s,a)=>s+a.cost,0);
+  const cashOut = cashOutExpenses + cogsOut + kocOut + adsOut;
+  const net = cashIn - cashOut;
+  return {cashIn, cashOut, net, breakdown:{cogsOut,kocOut,adsOut,cashOutExpenses}};
+}
+
+/* ---------------- ROUTER ---------------- */
+let currentRoute = 'dashboard';
+let mainState = {}; // ephemeral ui state per page (filters etc.)
+
+const MENU = [
+  {group:'TỔNG QUAN', items:[{key:'dashboard',label:'Dashboard',icon:'dashboard'}]},
+  {group:'BÁN HÀNG', items:[
+    {key:'orders',label:'Doanh thu thực tế',icon:'orders'},
+    {key:'products',label:'Sản phẩm',icon:'products'},
+    {key:'revenue',label:'Doanh thu',icon:'revenue'},
+    {key:'refunds',label:'Hoàn/Hủy',icon:'refund'},
+  ]},
+  {group:'TÀI CHÍNH', items:[
+    {key:'finance',label:'Tổng quan tài chính',icon:'finance'},
+    {key:'expenses',label:'Chi phí',icon:'expense'},
+    {key:'profit',label:'Lợi nhuận',icon:'profit'},
+    {key:'settlement',label:'Đối soát sàn',icon:'settlement'},
+    {key:'cashflow',label:'Dòng tiền',icon:'cashflow'},
+    {key:'breakeven',label:'Break-even',icon:'gauge'},
+  ]},
+  {group:'KOC / AFFILIATE', items:[
+    {key:'koc_overview',label:'Tổng quan KOC',icon:'kocperf'},
+    {key:'koc_list',label:'Danh sách KOC',icon:'koc'},
+    {key:'koc_group',label:'Nhóm KOC',icon:'kocgroup'},
+    {key:'campaigns',label:'Chiến dịch KOC',icon:'campaign'},
+    {key:'bookings',label:'Booking',icon:'booking'},
+  ]},
+  {group:'MARKETING', items:[
+    {key:'ads',label:'Chi phí quảng cáo',icon:'marketing'},
+  ]},
+  {group:'BÁO CÁO', items:[
+    {key:'reports',label:'Báo cáo',icon:'reports'},
+  ]},
+  {group:'CÀI ĐẶT', items:[
+    {key:'settings',label:'Cài đặt',icon:'settings'},
+  ]},
+];
+const ROUTE_TITLE = {};
+MENU.forEach(g=>g.items.forEach(i=>ROUTE_TITLE[i.key]=i.label));
+
+function navigate(route){
+  currentRoute = route;
+  window.location.hash = route;
+  render();
+  closeMobileSidebar();
+}
+window.addEventListener('hashchange', ()=>{ const r=window.location.hash.replace('#',''); if(r) { currentRoute=r; render(); } });
+
+/* ---------------- APP SHELL ---------------- */
+let sidebarCollapsed = false;
+function toggleSidebar(){ sidebarCollapsed=!sidebarCollapsed; render(); }
+function toggleMobileSidebar(){ document.querySelector('.sidebar').classList.toggle('mobile-open'); document.getElementById('overlayBg').classList.toggle('show'); }
+function closeMobileSidebar(){ const sb=document.querySelector('.sidebar'); if(sb) sb.classList.remove('mobile-open'); document.getElementById('overlayBg').classList.remove('show'); }
+
+function renderShell(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="sidebar ${sidebarCollapsed?'collapsed':''}">
+      <div class="sb-logo">
+        <div class="sb-logo-mark">ED</div>
+        <div class="sb-logo-text"><b>ECOM DIGITAL</b><span>ECOMMERCE SUITE</span></div>
+      </div>
+      <div class="sb-nav" id="sbNav"></div>
+      <button class="sb-collapse-btn" onclick="toggleSidebar()">${icon(sidebarCollapsed?'chevronRight':'chevronLeft',16)}</button>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <button class="hamburger" onclick="toggleMobileSidebar()">${icon('menu',18)}</button>
+        <div class="breadcrumb">ECOM DIGITAL &nbsp;/&nbsp; <b>${escapeHtml(ROUTE_TITLE[currentRoute]||'')}</b></div>
+        <div class="search-box">${icon('search',16)}<input id="globalSearch" placeholder="Tìm mã đơn, SKU, sản phẩm, KOC, campaign..." /></div>
+        <div class="topbar-right">
+          <button class="icon-btn" onclick="showNotifications()">${icon('bell',16)}<span class="dot" id="notifDot"></span></button>
+          <button class="icon-btn" onclick="navigate('settings')">${icon('settings',16)}</button>
+          <div class="avatar">ED</div>
+        </div>
+      </div>
+      <div class="content" id="pageContent"></div>
+    </div>
+  `;
+  const nav = document.getElementById('sbNav');
+  nav.innerHTML = MENU.map(g=>`
+    <div class="sb-group-title">${g.group}</div>
+    ${g.items.map(it=>`<a class="sb-item ${currentRoute===it.key?'active':''}" onclick="navigate('${it.key}')">${icon(it.icon,17)}<span class="label">${it.label}</span></a>`).join('')}
+  `).join('');
+  document.getElementById('globalSearch').addEventListener('input', debounce(e=>{
+    const q = e.target.value.trim();
+    if(q.length>1){ navigate('orders'); mainState.orders_search = q; render(); }
+  },500));
+}
+
+function showNotifications(){
+  const notifs = getNotifications();
+  document.getElementById('notifDot').style.display = notifs.length? 'block':'none';
+  openModal({
+    title:'Thông báo',
+    bodyHtml: notifs.length? notifs.map(n=>`<div class="notif-item">${icon(n.icon,15)}<div><b style="font-size:12px">${escapeHtml(n.title)}</b><div class="muted" style="margin-top:2px">${escapeHtml(n.detail)}</div></div></div>`).join('') : `<div class="empty-state">${icon('bell',30)}<div>Không có thông báo mới</div></div>`,
+    footerHtml:`<button class="btn" onclick="closeModal()">Đóng</button>`
+  });
+}
+function getNotifications(){
+  const notifs=[];
+  const bookOverdue = state.bookings.filter(b=>b.status!=='done'&&b.status!=='cancelled'&&b.deadline<todayISO());
+  bookOverdue.forEach(b=>{ const k=getKoc(b.kocId); notifs.push({icon:'alert',title:'Booking quá hạn',detail:`${k?k.name:'KOC'} - deadline ${fmtDate(b.deadline)}`}); });
+  const settlement = computeSettlement(dateRangeForFull());
+  settlement.forEach(s=>{ if(Math.abs(s.diff)>1000) notifs.push({icon:'alert',title:'Đối soát lệch',detail:`${s.platform.name}: chênh lệch ${formatCurrency(s.diff)}`}); });
+  const km = computeKocMetrics(dateRangeForFull());
+  km.filter(m=>m.roi<0 && m.orderCount>0).forEach(m=>notifs.push({icon:'alert',title:'KOC ROI âm',detail:`${m.koc.name}: ROI ${formatPct(m.roi)}`}));
+  return notifs;
+}
+function dateRangeForFull(){ return {dateFrom:'2000-01-01', dateTo:'2100-01-01', platformId:'all'}; }
+
+/* ---------------- MODAL SYSTEM ---------------- */
+function openModal({title, bodyHtml, footerHtml, wide}){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='modalOverlay';
+  overlay.innerHTML=`
+    <div class="modal" style="${wide?'max-width:760px':''}">
+      <div class="modal-header"><h3>${escapeHtml(title)}</h3><button class="close-x" onclick="closeModal()">${icon('x',18)}</button></div>
+      <div class="modal-body">${bodyHtml}</div>
+      ${footerHtml?`<div class="modal-footer">${footerHtml}</div>`:''}
+    </div>`;
+  overlay.addEventListener('mousedown',(e)=>{ if(e.target===overlay) closeModal(); });
+  document.body.appendChild(overlay);
+  lucide.createIcons();
+}
+function closeModal(){ const m=document.getElementById('modalOverlay'); if(m) m.remove(); }
+
+/* ================= RENDER ROUTER ================= */
+function render(){
+  renderShell();
+  const c = document.getElementById('pageContent');
+  const fn = PAGES[currentRoute] || PAGES.dashboard;
+  c.innerHTML = fn();
+  lucide.createIcons();
+  afterRenderHooks[currentRoute] && afterRenderHooks[currentRoute]();
+}
+const afterRenderHooks = {};
+
+/* ========================================================
+   PAGE: DASHBOARD
+   ======================================================== */
+mainState.dashboard = {preset:'30d', platformId:'all'};
+function pageDashboard(){
+  const s = mainState.dashboard;
+  const range = dateRangeFor(s.preset);
+  const filters = {dateFrom:range.from, dateTo:range.to, platformId:s.platformId};
+  const data = computeDashboard(filters);
+
+  const presets=[['today','Hôm nay'],['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['last_month','Tháng trước'],['this_quarter','Quý này'],['this_year','Năm nay']];
+
+  return `
+  <div class="page-title">ECOM DIGITAL</div>
+  <div class="page-sub">QUẢN LÝ KINH DOANH THƯƠNG MẠI ĐIỆN TỬ</div>
+
+  <div class="filter-row">
+    ${presets.map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="setDashFilter('preset','${k}')">${l}</span>`).join('')}
+    <select class="select" onchange="setDashFilter('platformId',this.value)">
+      <option value="all" ${s.platformId==='all'?'selected':''}>Tất cả sàn</option>
+      ${state.platforms.map(p=>`<option value="${p.id}" ${s.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}
+    </select>
+    <span class="muted" style="font-size:12px;margin-left:auto">${fmtDate(range.from)} → ${fmtDate(range.to)}</span>
+  </div>
+
+  <div class="grid grid-kpi" style="margin-bottom:18px">
+    ${data.kpis.map(k=>kpiCard(k)).join('')}
+  </div>
+
+  <div id="insightBox"></div>
+
+  <div class="grid grid-2" style="margin-bottom:14px">
+    <div class="card"><div class="section-title">Doanh thu &amp; Lợi nhuận theo ngày</div><canvas id="chartRevenueProfit" height="220"></canvas></div>
+    <div class="card"><div class="section-title">Doanh thu vs Chi phí</div><canvas id="chartRevenueCost" height="220"></canvas></div>
+  </div>
+  <div class="grid grid-3" style="margin-bottom:14px">
+    <div class="card"><div class="section-title">Doanh thu theo sàn</div><canvas id="chartByPlatform" height="200"></canvas></div>
+    <div class="card"><div class="section-title">Cơ cấu chi phí</div><canvas id="chartCostStructure" height="200"></canvas></div>
+    <div class="card"><div class="section-title">Đơn hàng theo trạng thái</div><canvas id="chartOrderStatus" height="200"></canvas></div>
+  </div>
+  <div class="grid grid-3">
+    <div class="card"><div class="section-title">Top 10 sản phẩm</div><canvas id="chartTopProducts" height="220"></canvas></div>
+    <div class="card"><div class="section-title">Top 10 KOC theo doanh thu</div><canvas id="chartTopKoc" height="220"></canvas></div>
+    <div class="card"><div class="section-title">Doanh thu theo KOC Group</div><canvas id="chartKocGroup" height="220"></canvas></div>
+  </div>
+  `;
+}
+function setDashFilter(key,val){ mainState.dashboard[key]=val; render(); }
+function kpiCard(k){
+  const isMoney = !k.isCount && !k.isPct && !k.isRatio;
+  const val = k.isPct? formatPct(k.value) : k.isRatio? k.value.toFixed(2)+'x' : k.isCount? formatNumber(k.value) : formatCurrency(k.value);
+  const good = k.invert ? k.change<=0 : k.change>=0;
+  const trendClass = k.change===0? 'trend-flat' : (good? 'trend-up':'trend-down');
+  const arrow = k.change===0? '' : (k.change>0? '↑':'↓');
+  return `<div class="card kpi-card">
+    <div class="kpi-top">
+      <div class="kpi-title">${k.title}</div>
+      <div class="kpi-icon" style="background:${k.grad}">${icon(k.icon,16)}</div>
+    </div>
+    <div class="kpi-value">${val}</div>
+    <div class="kpi-trend ${trendClass}">${arrow} ${Math.abs(k.change).toFixed(1)}% <span class="muted" style="margin-left:2px">so với kỳ trước</span></div>
+  </div>`;
+}
+
+let CHARTS = {};
+function destroyCharts(){ Object.values(CHARTS).forEach(c=>{try{c.destroy()}catch(e){}}); CHARTS={}; }
+const CHART_COLORS = ['#8B5CF6','#EC4899','#3B82F6','#22D3EE','#22C55E','#F59E0B','#F43F5E','#a78bfa','#f9a8d4','#93c5fd'];
+function chartDefaults(){
+  Chart.defaults.color = '#8E93AC';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+  Chart.defaults.font.family = "'Segoe UI',sans-serif";
+  Chart.defaults.font.size = 11;
+}
+afterRenderHooks.dashboard = function(){
+  chartDefaults();
+  destroyCharts();
+  const s = mainState.dashboard;
+  const range = dateRangeFor(s.preset);
+  const filters = {dateFrom:range.from, dateTo:range.to, platformId:s.platformId};
+  const orders = filterOrders(state.orders, filters);
+  const days = [];
+  let cursor = range.from;
+  while(cursor<=range.to && days.length<180){ days.push(cursor); cursor = addDays(cursor,1); }
+  const revByDay = days.map(d=>{ const o=orders.filter(x=>x.date===d && isCounted(x)); return o.reduce((s,x)=>s+calcOrder(x).netRevenue,0); });
+  const profitByDay = days.map(d=>{ const o=orders.filter(x=>x.date===d && isCounted(x)); return o.reduce((s,x)=>s+calcOrder(x).netProfit,0); });
+  const costByDay = days.map(d=>{ const o=orders.filter(x=>x.date===d && isCounted(x)); return o.reduce((s,x)=>{const c=calcOrder(x); return s+c.cogs+c.platformFee+c.paymentFee+c.kocCommission+c.adsCost+c.shippingFee;},0); });
+  const dayLabels = days.map(d=>d.slice(5));
+
+  CHARTS.revProfit = new Chart(document.getElementById('chartRevenueProfit'), {
+    type:'line', data:{labels:dayLabels, datasets:[
+      {label:'Doanh thu', data:revByDay, borderColor:'#8B5CF6', backgroundColor:'rgba(139,92,246,0.12)', fill:true, tension:0.35, pointRadius:0},
+      {label:'Lợi nhuận', data:profitByDay, borderColor:'#22C55E', backgroundColor:'rgba(34,197,94,0.08)', fill:true, tension:0.35, pointRadius:0},
+    ]}, options:{responsive:true, plugins:{legend:{position:'bottom'}}, scales:{y:{ticks:{callback:v=>formatNumber(v)}}}}
+  });
+  CHARTS.revCost = new Chart(document.getElementById('chartRevenueCost'), {
+    type:'bar', data:{labels:dayLabels, datasets:[
+      {label:'Doanh thu', data:revByDay, backgroundColor:'#3B82F6'},
+      {label:'Chi phí', data:costByDay, backgroundColor:'#EC4899'},
+    ]}, options:{responsive:true, plugins:{legend:{position:'bottom'}}, scales:{y:{ticks:{callback:v=>formatNumber(v)}}}}
+  });
+  const byPlatform = state.platforms.map(p=>{ const o=orders.filter(x=>x.platformId===p.id&&isCounted(x)); return o.reduce((s,x)=>s+calcOrder(x).netRevenue,0); });
+  CHARTS.platform = new Chart(document.getElementById('chartByPlatform'), {
+    type:'doughnut', data:{labels:state.platforms.map(p=>p.name), datasets:[{data:byPlatform, backgroundColor:CHART_COLORS}]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:10}}}}
+  });
+  const succOrders = orders.filter(isCounted);
+  let sumCogs=0,sumPlat=0,sumMgmt=0,sumPay=0,sumKoc=0,sumAds=0,sumShip=0;
+  succOrders.forEach(o=>{ const c=calcOrder(o); sumCogs+=c.cogs; sumPlat+=c.platformFee; sumMgmt+=c.managementFee; sumPay+=c.paymentFee; sumKoc+=c.kocCommission; sumAds+=c.adsCost; sumShip+=c.shippingFee; });
+  CHARTS.cost = new Chart(document.getElementById('chartCostStructure'), {
+    type:'doughnut', data:{labels:['Giá vốn','Phí sàn','Phí quản lý sàn','Phí thanh toán','Hoa hồng KOC','Quảng cáo','Vận chuyển'], datasets:[{data:[sumCogs,sumPlat,sumMgmt,sumPay,sumKoc,sumAds,sumShip], backgroundColor:CHART_COLORS}]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:10}}}}
+  });
+  const statusCount = ORDER_STATUSES.map(st=>orders.filter(o=>o.status===st).length);
+  CHARTS.status = new Chart(document.getElementById('chartOrderStatus'), {
+    type:'pie', data:{labels:ORDER_STATUSES.map(s=>ORDER_STATUS_LABEL[s]), datasets:[{data:statusCount, backgroundColor:CHART_COLORS}]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:10}}}}
+  });
+  const pm = computeProductMetrics(filters).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
+  CHARTS.topProd = new Chart(document.getElementById('chartTopProducts'), {
+    type:'bar', data:{labels:pm.map(p=>p.product.name.slice(0,14)), datasets:[{label:'Doanh thu', data:pm.map(p=>p.revenue), backgroundColor:'#8B5CF6'}]},
+    options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{ticks:{callback:v=>formatNumber(v)}}}}
+  });
+  const km = computeKocMetrics(filters).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
+  CHARTS.topKoc = new Chart(document.getElementById('chartTopKoc'), {
+    type:'bar', data:{labels:km.map(k=>k.koc.name.slice(0,14)), datasets:[{label:'Doanh thu', data:km.map(k=>k.revenue), backgroundColor:'#EC4899'}]},
+    options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{ticks:{callback:v=>formatNumber(v)}}}}
+  });
+  const groupRev = state.kocGroups.map(g=>{
+    const kocIds = state.kocs.filter(k=>k.groupId===g.id).map(k=>k.id);
+    const o = orders.filter(x=>kocIds.includes(x.kocId) && isCounted(x));
+    return o.reduce((s,x)=>s+calcOrder(x).netRevenue,0);
+  });
+  CHARTS.kocGroup = new Chart(document.getElementById('chartKocGroup'), {
+    type:'doughnut', data:{labels:state.kocGroups.map(g=>g.name), datasets:[{data:groupRev, backgroundColor:CHART_COLORS}]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:10}}}}
+  });
+
+  // Insight box
+  const totalRev = revByDay.reduce((a,b)=>a+b,0);
+  let insights = [];
+  state.platforms.forEach((p,i)=>{ if(byPlatform[i] && totalRev>0){ const pct=safeDiv(byPlatform[i],totalRev)*100; if(pct>40) insights.push(`Doanh thu ${p.name} đang chiếm ${pct.toFixed(0)}% tổng doanh thu.`); } });
+  const vipGroup = state.kocGroups.find(g=>g.name.includes('VIP'));
+  if(vipGroup){
+    const idx = state.kocGroups.indexOf(vipGroup);
+    const totalKocRev = groupRev.reduce((a,b)=>a+b,0);
+    if(totalKocRev>0 && groupRev[idx]) insights.push(`KOC nhóm ${vipGroup.name} đang tạo ra ${(safeDiv(groupRev[idx],totalKocRev)*100).toFixed(0)}% doanh thu KOC.`);
+  }
+  if(pm.length){ const best=pm[0]; insights.push(`Sản phẩm "${best.product.name}" có doanh thu cao nhất kỳ này (${formatCurrency(best.revenue)}).`); }
+  const adsCostTotal = sumAds + state.ads.filter(a=>a.date>=range.from&&a.date<=range.to).reduce((s,a)=>s+a.cost,0);
+  if(totalRev>0) insights.push(`Chi phí quảng cáo đang chiếm ${safeDiv(adsCostTotal,totalRev*100? totalRev: 1)>0? (safeDiv(adsCostTotal,totalRev)*100).toFixed(0):0}% doanh thu.`);
+  const negRoiKoc = km.filter(k=>k.roi<0 && k.orderCount>0);
+  if(negRoiKoc.length) insights.push(`${negRoiKoc.length} KOC có ROI âm trong kỳ này cần xem xét lại hợp tác.`);
+  document.getElementById('insightBox').innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div class="section-title">${icon('star',16)} &nbsp;ECOM DIGITAL INSIGHT</div>
+      ${insights.length? insights.map(t=>`<div class="insight-box">${icon('info',15)}<p>${escapeHtml(t)}</p></div>`).join('') : `<div class="muted" style="font-size:12.5px">Chưa đủ dữ liệu để phân tích trong khoảng thời gian này.</div>`}
+    </div>`;
+};
+
+/* ========================================================
+   PAGE: ORDERS
+   ======================================================== */
+mainState.orders = {page:1, pageSize:10, search:'', status:'all', platformId:'all'};
+function pageOrders(){
+  const s = mainState.orders;
+  const filters = {platformId:s.platformId==='all'?null:s.platformId, status:s.status, search:s.search};
+  let list = filterOrders(state.orders, filters).sort((a,b)=> b.date.localeCompare(a.date));
+  const total = list.length;
+  const totalPages = Math.max(1,Math.ceil(total/s.pageSize));
+  s.page = Math.min(s.page, totalPages);
+  const pageItems = list.slice((s.page-1)*s.pageSize, s.page*s.pageSize);
+
+  return `
+  <div class="page-title">Doanh thu thực tế</div>
+  <div class="page-sub">Nhập liệu doanh thu thực tế phát sinh trên các sàn thương mại điện tử</div>
+  <div class="filter-row">
+    <input class="input" placeholder="Tìm mã đơn, khách hàng, SKU..." value="${escapeHtml(s.search)}" oninput="setOrderFilter('search',this.value)" style="min-width:220px">
+    <select class="select" onchange="setOrderFilter('status',this.value)">
+      <option value="all">Tất cả trạng thái</option>
+      ${ORDER_STATUSES.map(st=>`<option value="${st}" ${s.status===st?'selected':''}>${ORDER_STATUS_LABEL[st]}</option>`).join('')}
+    </select>
+    <select class="select" onchange="setOrderFilter('platformId',this.value)">
+      <option value="all">Tất cả sàn</option>
+      ${state.platforms.map(p=>`<option value="${p.id}" ${s.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}
+    </select>
+    <button class="btn" onclick="document.getElementById('importOrderFile').click()">${icon('upload',14)} Import</button>
+    <input type="file" id="importOrderFile" accept=".csv,.xlsx" class="hidden" onchange="handleImportOrders(this.files[0])">
+    <button class="btn" onclick="exportTableExcel('orders')">${icon('download',14)} Export</button>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openOrderModal()">${icon('plus',14)} THÊM DOANH THU</button>
+  </div>
+  ${total===0? emptyState('Chưa có dữ liệu doanh thu nào','openOrderModal()','+ Thêm doanh thu') : `
+  <div class="table-wrap"><table>
+    <thead><tr>
+      <th>Mã đơn</th><th>Ngày</th><th>Sàn</th><th>Khách hàng</th><th>Sản phẩm</th><th>SL</th>
+      <th>Giá bán</th><th>Giảm giá</th><th>Doanh thu</th><th>Phí sàn</th><th>Hoa hồng KOC</th><th>Giá vốn</th><th>Lợi nhuận</th><th>Trạng thái</th><th></th>
+    </tr></thead>
+    <tbody>
+    ${pageItems.map(o=>{
+      const c = calcOrder(o);
+      const p = getProduct(o.productId);
+      const pl = getPlatform(o.platformId);
+      return `<tr>
+        <td><b>${o.code}</b></td>
+        <td>${fmtDate(o.date)}</td>
+        <td>${pl?pl.name:''}</td>
+        <td>${escapeHtml(o.customer)}</td>
+        <td>${p?escapeHtml(p.name):'—'}</td>
+        <td>${o.qty}</td>
+        <td>${formatCurrency(o.sellPrice)}</td>
+        <td>${formatCurrency(o.discount)}</td>
+        <td>${formatCurrency(c.netRevenue)}</td>
+        <td>${formatCurrency(c.platformFee)}</td>
+        <td>${formatCurrency(c.kocCommission)}</td>
+        <td>${formatCurrency(c.cogs)}</td>
+        <td style="color:${c.netProfit>=0?'var(--green)':'var(--red)'}">${formatCurrency(c.netProfit)}</td>
+        <td><span class="badge b-${o.status}">${ORDER_STATUS_LABEL[o.status]}</span></td>
+        <td><div class="row-actions">
+          <button onclick="viewOrder('${o.id}')">${icon('eye',14)}</button>
+          <button onclick="openOrderModal('${o.id}')">${icon('edit',14)}</button>
+          <button onclick="deleteOrder('${o.id}')">${icon('trash',14)}</button>
+        </div></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>
+  <div class="pagination">
+    <span>Tổng ${total} đơn</span>
+    <button ${s.page<=1?'disabled':''} onclick="setOrderFilter('page',${s.page-1})">${icon('chevronLeft',14)}</button>
+    <span>${s.page}/${totalPages}</span>
+    <button ${s.page>=totalPages?'disabled':''} onclick="setOrderFilter('page',${s.page+1})">${icon('chevronRight',14)}</button>
+  </div>`}
+  `;
+}
+function emptyState(msg,onclickFn,btnLabel){
+  return `<div class="card empty-state">${icon('info',30)}<div style="margin-bottom:14px">${msg}</div><button class="btn btn-primary" onclick="${onclickFn}">${btnLabel}</button></div>`;
+}
+function setOrderFilter(key,val){ if(key!=='page') mainState.orders.page=1; mainState.orders[key]=val; render(); }
+
+function openOrderModal(id){
+  const editing = id? state.orders.find(o=>o.id===id) : null;
+  const o = editing || {id:null, code:'ORD'+String(20000+state.orders.length), date:todayISO(), platformId:state.platforms[0].id, customer:'', productId:state.products[0]?state.products[0].id:'', qty:1, sellPrice: state.products[0]?state.products[0].sellPrice:0, discount:0, shippingFeeSeller:0, kocId:'', campaignId:'', adsCostAllocated:0, status:'pending', refundReason:''};
+  if(!state.products.length){ toast('Vui lòng thêm sản phẩm trước khi tạo doanh thu','warning'); return; }
+  openModal({
+    title: editing? 'Sửa doanh thu':'Thêm doanh thu thực tế', wide:true,
+    bodyHtml:`
+    <form id="orderForm">
+      <div class="form-grid2">
+        <div class="form-row"><label>Mã đơn *</label><input class="input" name="code" value="${escapeHtml(o.code)}" required></div>
+        <div class="form-row"><label>Ngày *</label><input class="input" type="date" name="date" value="${o.date}" required></div>
+        <div class="form-row"><label>Sàn *</label><select class="select" name="platformId">${state.platforms.map(p=>`<option value="${p.id}" ${o.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Khách hàng</label><input class="input" name="customer" value="${escapeHtml(o.customer)}"></div>
+        <div class="form-row"><label>Sản phẩm *</label><select class="select" name="productId" onchange="onOrderProductChange(this)">${state.products.map(p=>`<option value="${p.id}" data-price="${p.sellPrice}" ${o.productId===p.id?'selected':''}>${p.sku} - ${p.name}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Số lượng *</label><input class="input" type="number" min="1" name="qty" value="${o.qty}" required></div>
+        <div class="form-row"><label>Giá bán *</label><input class="input" type="number" min="0" name="sellPrice" value="${o.sellPrice}" required></div>
+        <div class="form-row"><label>Giảm giá</label><input class="input" type="number" min="0" name="discount" value="${o.discount||0}"></div>
+        <div class="form-row"><label>Phí vận chuyển (người bán chịu)</label><input class="input" type="number" min="0" name="shippingFeeSeller" value="${o.shippingFeeSeller||0}"></div>
+        <div class="form-row"><label>Chi phí quảng cáo phân bổ</label><input class="input" type="number" min="0" name="adsCostAllocated" value="${o.adsCostAllocated||0}"></div>
+        <div class="form-row"><label>KOC (nếu có)</label><select class="select" name="kocId"><option value="">— Không có —</option>${state.kocs.map(k=>`<option value="${k.id}" ${o.kocId===k.id?'selected':''}>${escapeHtml(k.name)}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Chiến dịch</label><select class="select" name="campaignId"><option value="">— Không có —</option>${state.campaigns.map(c=>`<option value="${c.id}" ${o.campaignId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Trạng thái *</label><select class="select" name="status">${ORDER_STATUSES.map(st=>`<option value="${st}" ${o.status===st?'selected':''}>${ORDER_STATUS_LABEL[st]}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-row" id="refundReasonRow" style="${o.status==='return'?'':'display:none'}"><label>Lý do hoàn/hủy</label><input class="input" name="refundReason" value="${escapeHtml(o.refundReason||'')}"></div>
+    </form>`,
+    footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitOrderForm('${o.id||''}')">${icon('save',14)} Lưu</button>`
+  });
+  document.querySelector('select[name="status"]').addEventListener('change',function(){
+    const show = this.value==='return';
+    document.getElementById('refundReasonRow').style.display = show?'':'none';
+  });
+}
+function onOrderProductChange(sel){
+  const price = sel.options[sel.selectedIndex].getAttribute('data-price');
+  document.querySelector('input[name="sellPrice"]').value = price;
+}
+function submitOrderForm(id){
+  const form = document.getElementById('orderForm');
+  const fd = new FormData(form);
+  const code = fd.get('code').trim();
+  if(!code){ toast('Vui lòng nhập mã đơn','error'); return; }
+  const qty = parseInt(fd.get('qty'));
+  const sellPrice = parseFloat(fd.get('sellPrice'));
+  const discount = parseFloat(fd.get('discount')||0);
+  if(qty<=0){ toast('Số lượng phải lớn hơn 0','error'); return; }
+  if(sellPrice<0 || discount<0){ toast('Giá trị không được âm','error'); return; }
+  if(discount > sellPrice*qty){ toast('Giảm giá không được lớn hơn tổng giá bán','error'); return; }
+  const data = {
+    code, date: fd.get('date'), platformId: fd.get('platformId'), customer: fd.get('customer').trim(),
+    productId: fd.get('productId'), sku: getProduct(fd.get('productId')).sku, qty, sellPrice, discount,
+    shippingFeeSeller: parseFloat(fd.get('shippingFeeSeller')||0), adsCostAllocated: parseFloat(fd.get('adsCostAllocated')||0),
+    kocId: fd.get('kocId')||null, campaignId: fd.get('campaignId')||null, status: fd.get('status'),
+    refundReason: fd.get('refundReason')||'',
+  };
+  let orderObj;
+  if(id){
+    orderObj = state.orders.find(o=>o.id===id);
+    Object.assign(orderObj, data);
+  } else {
+    orderObj = Object.assign({id:uid('ord')}, data);
+    state.orders.push(orderObj);
+  }
+  saveData();
+  closeModal();
+  toast(id? 'Cập nhật doanh thu thành công':'Thêm doanh thu thành công','success');
+  render();
+}
+function deleteOrder(id){
+  confirmAction('Bạn có chắc muốn xóa mục doanh thu này? Dữ liệu liên quan sẽ được cập nhật lại.', ()=>{
+    state.orders = state.orders.filter(o=>o.id!==id);
+    saveData(); render();
+    toast('Đã xóa','success');
+  });
+}
+function viewOrder(id){
+  const o = state.orders.find(x=>x.id===id); if(!o) return;
+  const c = calcOrder(o); const p=getProduct(o.productId); const pl=getPlatform(o.platformId); const koc=getKoc(o.kocId);
+  openModal({title:'Chi tiết đơn '+o.code, bodyHtml:`
+    <div class="stat-line"><span class="muted">Sàn</span><b>${pl?pl.name:''}</b></div>
+    <div class="stat-line"><span class="muted">Khách hàng</span><b>${escapeHtml(o.customer)}</b></div>
+    <div class="stat-line"><span class="muted">Sản phẩm</span><b>${p?escapeHtml(p.name):''}</b></div>
+    <div class="stat-line"><span class="muted">KOC</span><b>${koc?escapeHtml(koc.name):'—'}</b></div>
+    <hr class="sep">
+    <div class="stat-line"><span class="muted">Doanh thu gộp</span><b>${formatCurrency(c.grossRevenue)}</b></div>
+    <div class="stat-line"><span class="muted">Doanh thu sau giảm</span><b>${formatCurrency(c.netRevenue)}</b></div>
+    <div class="stat-line"><span class="muted">Phí sàn</span><b>${formatCurrency(c.platformFee)}</b></div>
+    <div class="stat-line"><span class="muted">Phí thanh toán</span><b>${formatCurrency(c.paymentFee)}</b></div>
+    <div class="stat-line"><span class="muted">Phí vận chuyển</span><b>${formatCurrency(c.shippingFee)}</b></div>
+    <div class="stat-line"><span class="muted">Hoa hồng KOC</span><b>${formatCurrency(c.kocCommission)}</b></div>
+    <div class="stat-line"><span class="muted">Chi phí quảng cáo</span><b>${formatCurrency(c.adsCost)}</b></div>
+    <div class="stat-line"><span class="muted">Doanh thu thực nhận</span><b>${formatCurrency(c.netReceived)}</b></div>
+    <div class="stat-line"><span class="muted">Giá vốn</span><b>${formatCurrency(c.cogs)}</b></div>
+    <div class="stat-line"><span class="muted">Lợi nhuận gộp</span><b>${formatCurrency(c.grossProfit)}</b></div>
+    <div class="stat-line"><span class="muted">Lợi nhuận ròng</span><b style="color:${c.netProfit>=0?'var(--green)':'var(--red)'}">${formatCurrency(c.netProfit)}</b></div>
+    <div class="stat-line"><span class="muted">Biên lợi nhuận</span><b>${formatPct(c.margin)}</b></div>
+  `, footerHtml:`<button class="btn" onclick="closeModal()">Đóng</button>`});
+}
+
+function handleImportOrders(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      let added=0, errors=0;
+      rows.forEach(r=>{
+        const product = state.products.find(p=>p.sku===String(r.SKU||r.sku||'').trim());
+        const platform = state.platforms.find(p=>p.name===String(r.Sàn||r.platform||'').trim()) || state.platforms[0];
+        if(!product || !r['Mã đơn'] && !r.code){ errors++; return; }
+        state.orders.push({
+          id:uid('ord'), code:String(r['Mã đơn']||r.code), date: r['Ngày']||r.date||todayISO(), platformId:platform.id,
+          customer:String(r['Khách hàng']||r.customer||''), productId:product.id, sku:product.sku,
+          qty: parseInt(r['Số lượng']||r.qty||1), sellPrice: parseFloat(r['Giá bán']||r.sellPrice||product.sellPrice),
+          discount: parseFloat(r['Giảm giá']||r.discount||0), shippingFeeSeller:0, adsCostAllocated:0,
+          kocId:null, campaignId:null, status: r['Trạng thái']||r.status||'success', refundReason:'',
+        });
+        added++;
+      });
+      saveData(); render();
+      toast(`Import thành công ${added} dòng doanh thu${errors?', bỏ qua '+errors+' dòng lỗi':''}`, errors? 'warning':'success');
+    }catch(err){ toast('Lỗi import: '+err.message,'error'); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* export generic table to excel */
+function exportTableExcel(type){
+  let rows=[], filename='export';
+  if(type==='orders'){
+    filename='don-hang';
+    rows = filterOrders(state.orders, {}).map(o=>{ const c=calcOrder(o); const p=getProduct(o.productId); const pl=getPlatform(o.platformId);
+      return {'Mã đơn':o.code,'Ngày':o.date,'Sàn':pl?pl.name:'','Khách hàng':o.customer,'Sản phẩm':p?p.name:'','SKU':o.sku,'Số lượng':o.qty,'Giá bán':o.sellPrice,'Giảm giá':o.discount,'Doanh thu':c.netRevenue,'Phí sàn':c.platformFee,'Hoa hồng KOC':c.kocCommission,'Giá vốn':c.cogs,'Lợi nhuận':c.netProfit,'Trạng thái':ORDER_STATUS_LABEL[o.status]};
+    });
+  } else if(type==='products'){
+    filename='san-pham';
+    rows = computeProductMetrics({}).map(m=>({'SKU':m.product.sku,'Tên sản phẩm':m.product.name,'Phí sàn (%)':m.product.platformFeePct,'Phí quản lý sàn':m.product.platformManagementFee,'Doanh thu':m.revenue,'Giá vốn':m.cogs,'Lợi nhuận':m.profit,'Biên LN %':m.margin.toFixed(1)}));
+  } else if(type==='koc'){
+    filename='koc';
+    rows = computeKocMetrics({}).map(m=>({'KOC':m.koc.name,'Doanh thu':m.revenue,'Đơn':m.orderCount,'Hoa hồng':m.commission,'Tổng chi phí':m.totalCost,'Lợi nhuận':m.profit,'ROAS':m.roas.toFixed(2),'ROI %':m.roi.toFixed(1)}));
+  } else if(type==='expenses'){
+    filename='chi-phi';
+    rows = state.expenses.map(e=>({'Ngày':e.date,'Mã CT':e.docNo,'Loại':EXPENSE_TYPES.find(t=>t.id===e.type)?.name,'Số tiền':e.amount,'Ghi chú':e.note}));
+  }
+  if(!rows.length){ toast('Không có dữ liệu để export','warning'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  XLSX.writeFile(wb, filename+'-'+todayISO()+'.xlsx');
+  toast('Export thành công','success');
+}
+function downloadTemplate(type){
+  let rows=[], filename='template';
+  if(type==='orders'){ filename='template-don-hang'; rows=[{'Mã đơn':'ORD0001','Ngày':todayISO(),'Sàn':'TikTok Shop','Khách hàng':'Nguyễn Văn A','SKU':state.products[0]?state.products[0].sku:'SKU001','Số lượng':1,'Giá bán':100000,'Giảm giá':0,'Trạng thái':'success'}]; }
+  else if(type==='products'){ filename='template-san-pham'; rows=[{'SKU':'SKU999','Tên sản phẩm':'Sản phẩm mẫu','Danh mục':state.categories[0]?.name,'Giá nhập':50000,'Giá bán':100000,'Giá vốn':55000,'Phí sàn (%)':5,'Phí quản lý sàn':2000}]; }
+  else if(type==='kocs'){ filename='template-koc'; rows=[{'Tên':'KOC mẫu','Username':'@kocmau','Nền tảng':'TikTok','Group':'KOC A','Follower':10000}]; }
+  else if(type==='expenses'){ filename='template-chi-phi'; rows=[{'Ngày':todayISO(),'Loại':'other','Số tiền':1000000,'Ghi chú':'Ghi chú mẫu'}]; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  XLSX.writeFile(wb, filename+'.xlsx');
+}
+
+/* ========================================================
+   PAGE: PRODUCTS
+   ======================================================== */
+mainState.products = {search:'', category:'all'};
+function pageProducts(){
+  const s = mainState.products;
+  const filters = dateRangeForFull();
+  const metrics = computeProductMetrics(filters);
+  let list = metrics.filter(m=>{
+    if(s.category!=='all' && m.product.category!==s.category) return false;
+    if(s.search){ const q=s.search.toLowerCase(); if(!(m.product.name.toLowerCase().includes(q)||m.product.sku.toLowerCase().includes(q))) return false; }
+    return true;
+  });
+  return `
+  <div class="page-title">Sản phẩm</div>
+  <div class="page-sub">Quản lý danh mục sản phẩm và hiệu quả kinh doanh</div>
+  <div class="filter-row">
+    <input class="input" placeholder="Tìm SKU, tên sản phẩm..." value="${escapeHtml(s.search)}" oninput="mainState.products.search=this.value;render()">
+    <select class="select" onchange="mainState.products.category=this.value;render()">
+      <option value="all">Tất cả danh mục</option>
+      ${state.categories.map(c=>`<option value="${c.id}" ${s.category===c.id?'selected':''}>${c.name}</option>`).join('')}
+    </select>
+    <button class="btn" onclick="downloadTemplate('products')">${icon('download',14)} Template</button>
+    <button class="btn" onclick="document.getElementById('importProdFile').click()">${icon('upload',14)} Import</button>
+    <input type="file" id="importProdFile" accept=".csv,.xlsx" class="hidden" onchange="handleImportProducts(this.files[0])">
+    <button class="btn" onclick="exportTableExcel('products')">${icon('download',14)} Export</button>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openProductModal()">${icon('plus',14)} Thêm sản phẩm</button>
+  </div>
+  ${!list.length? emptyState('Chưa có sản phẩm nào','openProductModal()','+ Thêm sản phẩm') : `
+  <div class="table-wrap"><table>
+    <thead><tr><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
+    <tbody>${list.map(m=>{
+      const p=m.product; const cat=state.categories.find(c=>c.id===p.category);
+      const marginTag = m.margin>=state.settings.productMarginThresholds.high? '<span class="badge b-green">🟢 Cao</span>' : m.margin<=state.settings.productMarginThresholds.low? '<span class="badge b-red">🔴 Thấp</span>':'<span class="badge b-yellow">🟡 TB</span>';
+      return `<tr>
+        <td><b>${p.sku}</b></td><td>${escapeHtml(p.name)}</td><td>${cat?cat.name:''}</td>
+        <td>${formatCurrency(p.sellPrice)}</td><td>${formatCurrency(p.costPrice)}</td>
+        <td>${(p.platformFeePct||0).toFixed(1)}%</td>
+        <td>${formatCurrency(p.platformManagementFee||0)}</td>
+        <td>${formatCurrency(m.revenue)}</td>
+        <td style="color:${m.profit>=0?'var(--green)':'var(--red)'}">${formatCurrency(m.profit)}</td>
+        <td>${formatPct(m.margin)} ${marginTag}</td>
+        <td><span class="badge ${p.status==='active'?'b-green':'b-red'}">${p.status==='active'?'Hoạt động':'Ngừng bán'}</span></td>
+        <td><div class="row-actions"><button onclick="openProductModal('${p.id}')">${icon('edit',14)}</button><button onclick="deleteProduct('${p.id}')">${icon('trash',14)}</button></div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`}
+  `;
+}
+function openProductModal(id){
+  const editing = id? getProduct(id): null;
+  const p = editing || {id:null, sku:'SKU'+String(state.products.length+1).padStart(3,'0'), name:'', category:state.categories[0]?.id||'', platformId:state.platforms[0].id, importPrice:0, sellPrice:0, costPrice:0, platformFeePct:0, platformManagementFee:0, status:'active'};
+  openModal({title:editing?'Sửa sản phẩm':'Thêm sản phẩm', bodyHtml:`
+    <form id="productForm">
+      <div class="form-grid2">
+        <div class="form-row"><label>SKU *</label><input class="input" name="sku" value="${escapeHtml(p.sku)}" required ${editing?'':''}></div>
+        <div class="form-row"><label>Tên sản phẩm *</label><input class="input" name="name" value="${escapeHtml(p.name)}" required></div>
+        <div class="form-row"><label>Danh mục</label><select class="select" name="category">${state.categories.map(c=>`<option value="${c.id}" ${p.category===c.id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Sàn</label><select class="select" name="platformId">${state.platforms.map(pl=>`<option value="${pl.id}" ${p.platformId===pl.id?'selected':''}>${pl.name}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Giá nhập</label><input class="input" type="number" min="0" name="importPrice" value="${p.importPrice}"></div>
+        <div class="form-row"><label>Giá vốn *</label><input class="input" type="number" min="0" name="costPrice" value="${p.costPrice}" required></div>
+        <div class="form-row"><label>Giá bán *</label><input class="input" type="number" min="0" name="sellPrice" value="${p.sellPrice}" required></div>
+        <div class="form-row"><label>Phí sàn (%)</label><input class="input" type="number" min="0" max="100" step="0.1" name="platformFeePct" value="${p.platformFeePct||0}"></div>
+        <div class="form-row"><label>Phí quản lý của sàn (đ/sản phẩm)</label><input class="input" type="number" min="0" name="platformManagementFee" value="${p.platformManagementFee||0}"></div>
+        <div class="form-row"><label>Trạng thái</label><select class="select" name="status"><option value="active" ${p.status==='active'?'selected':''}>Hoạt động</option><option value="inactive" ${p.status==='inactive'?'selected':''}>Ngừng bán</option></select></div>
+      </div>
+    </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitProductForm('${p.id||''}')">${icon('save',14)} Lưu</button>`});
+}
+function submitProductForm(id){
+  const fd = new FormData(document.getElementById('productForm'));
+  const sku = fd.get('sku').trim(); const name=fd.get('name').trim();
+  if(!sku || !name){ toast('Vui lòng nhập đầy đủ SKU và tên sản phẩm','error'); return; }
+  if(!id && state.products.some(p=>p.sku===sku)){ toast('SKU đã tồn tại','error'); return; }
+  const platformFeePct = parseFloat(fd.get('platformFeePct')||0);
+  if(platformFeePct<0||platformFeePct>100){ toast('Phí sàn phải trong khoảng 0-100%','error'); return; }
+  const data = {sku,name,category:fd.get('category'),platformId:fd.get('platformId'),importPrice:parseFloat(fd.get('importPrice')||0),costPrice:parseFloat(fd.get('costPrice')||0),sellPrice:parseFloat(fd.get('sellPrice')||0),platformFeePct,platformManagementFee:parseFloat(fd.get('platformManagementFee')||0),status:fd.get('status')};
+  if(data.costPrice<0||data.sellPrice<0){ toast('Giá không được âm','error'); return; }
+  if(id){
+    const p=getProduct(id); Object.assign(p,data);
+  } else {
+    const np = Object.assign({id:uid('prod')},data);
+    state.products.push(np);
+  }
+  saveData(); closeModal(); render();
+  toast(id?'Cập nhật sản phẩm thành công':'Thêm sản phẩm thành công','success');
+}
+function deleteProduct(id){
+  const inUse = state.orders.some(o=>o.productId===id);
+  confirmAction(inUse? 'Sản phẩm này đang có trong dữ liệu doanh thu. Xóa vẫn tiếp tục?':'Bạn có chắc muốn xóa sản phẩm này?', ()=>{
+    state.products = state.products.filter(p=>p.id!==id);
+    saveData(); render(); toast('Đã xóa sản phẩm','success');
+  });
+}
+function handleImportProducts(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      let added=0;
+      rows.forEach(r=>{
+        const sku=String(r.SKU||r.sku||'').trim(); if(!sku) return;
+        if(state.products.some(p=>p.sku===sku)) return;
+        state.products.push({id:uid('prod'),sku,name:String(r['Tên sản phẩm']||r.name||sku),category:state.categories[0]?.id,platformId:state.platforms[0].id,importPrice:parseFloat(r['Giá nhập']||0),costPrice:parseFloat(r['Giá vốn']||r.costPrice||0),sellPrice:parseFloat(r['Giá bán']||r.sellPrice||0),platformFeePct:parseFloat(r['Phí sàn (%)']||r.platformFeePct||0),platformManagementFee:parseFloat(r['Phí quản lý sàn']||r.platformManagementFee||0),status:'active'});
+        added++;
+      });
+      saveData(); render();
+      toast('Import thành công '+added+' sản phẩm','success');
+    }catch(err){ toast('Lỗi import: '+err.message,'error'); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* ========================================================
+   PAGE: REVENUE (simple report view)
+   ======================================================== */
+mainState.revenue = {preset:'30d'};
+function pageRevenue(){
+  const s=mainState.revenue; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const orders = filterOrders(state.orders,filters).filter(isCounted);
+  const total = orders.reduce((sum,o)=>sum+calcOrder(o).netRevenue,0);
+  const byDate={};
+  orders.forEach(o=>{ byDate[o.date]=(byDate[o.date]||0)+calcOrder(o).netRevenue; });
+  const dates = Object.keys(byDate).sort();
+  return `<div class="page-title">Doanh thu</div><div class="page-sub">Chi tiết doanh thu theo thời gian</div>
+  <div class="filter-row">
+    ${[['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.revenue.preset='${k}';render()">${l}</span>`).join('')}
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="section-title">Tổng doanh thu: <span style="color:var(--green)">${formatCurrency(total)}</span></div><canvas id="chartRevDetail" height="90"></canvas></div>
+  <div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Doanh thu</th></tr></thead><tbody>
+  ${dates.length? dates.map(d=>`<tr><td>${fmtDate(d)}</td><td>${formatCurrency(byDate[d])}</td></tr>`).join(''): '<tr><td colspan="2" class="muted" style="text-align:center;padding:20px">Chưa có dữ liệu</td></tr>'}
+  </tbody></table></div>`;
+}
+afterRenderHooks.revenue = function(){
+  chartDefaults(); destroyCharts();
+  const s=mainState.revenue; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const orders=filterOrders(state.orders,filters).filter(isCounted);
+  const byDate={}; orders.forEach(o=>{byDate[o.date]=(byDate[o.date]||0)+calcOrder(o).netRevenue;});
+  const dates=Object.keys(byDate).sort();
+  if(document.getElementById('chartRevDetail'))
+  CHARTS.rev = new Chart(document.getElementById('chartRevDetail'),{type:'line',data:{labels:dates.map(d=>d.slice(5)),datasets:[{label:'Doanh thu',data:dates.map(d=>byDate[d]),borderColor:'#8B5CF6',backgroundColor:'rgba(139,92,246,0.12)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}}}});
+};
+
+/* ========================================================
+   PAGE: REFUNDS/CANCELLATIONS
+   ======================================================== */
+function pageRefunds(){
+  const orders = state.orders.filter(o=>o.status==='return'||o.status==='cancelled');
+  const totalOrders = state.orders.length||1;
+  const returnCount = state.orders.filter(o=>o.status==='return').length;
+  const cancelCount = state.orders.filter(o=>o.status==='cancelled').length;
+  const returnRate = safeDiv(returnCount,totalOrders)*100;
+  const cancelRate = safeDiv(cancelCount,totalOrders)*100;
+  const returnValue = state.orders.filter(o=>o.status==='return').reduce((s,o)=>s+o.sellPrice*o.qty-o.discount,0);
+  const reasonCount={};
+  state.orders.filter(o=>o.status==='return').forEach(o=>{ reasonCount[o.refundReason||'Khác']=(reasonCount[o.refundReason||'Khác']||0)+1; });
+  const topReasons = Object.entries(reasonCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const prodReturns={};
+  state.orders.filter(o=>o.status==='return').forEach(o=>{ prodReturns[o.productId]=(prodReturns[o.productId]||0)+o.qty; });
+  const topProdReturn = Object.entries(prodReturns).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  return `<div class="page-title">Hoàn / Hủy</div><div class="page-sub">Theo dõi đơn hoàn trả và hủy bỏ</div>
+  <div class="grid grid-kpi" style="margin-bottom:16px">
+    ${kpiCard({title:'Tỷ lệ hoàn',value:returnRate,isPct:true,icon:'refund',grad:'var(--grad-3)',change:0,invert:true})}
+    ${kpiCard({title:'Tỷ lệ hủy',value:cancelRate,isPct:true,icon:'x',grad:'var(--grad-3)',change:0,invert:true})}
+    ${kpiCard({title:'Giá trị hoàn',value:returnValue,icon:'refund',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Số đơn hoàn/hủy',value:orders.length,isCount:true,icon:'alert',grad:'var(--grad-1)',change:0,invert:true})}
+  </div>
+  <div class="grid grid-2" style="margin-bottom:14px">
+    <div class="card"><div class="section-title">Top lý do hoàn</div>${topReasons.length?topReasons.map(([r,c])=>`<div class="stat-line"><span>${escapeHtml(r)}</span><b>${c}</b></div>`).join(''):'<div class="muted">Không có dữ liệu</div>'}</div>
+    <div class="card"><div class="section-title">Top sản phẩm hoàn nhiều</div>${topProdReturn.length?topProdReturn.map(([pid,c])=>{const p=getProduct(pid);return `<div class="stat-line"><span>${p?escapeHtml(p.name):pid}</span><b>${c}</b></div>`}).join(''):'<div class="muted">Không có dữ liệu</div>'}</div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Mã đơn</th><th>Ngày</th><th>Sàn</th><th>Sản phẩm</th><th>Giá trị</th><th>Lý do</th><th>Trạng thái</th></tr></thead><tbody>
+  ${orders.length? orders.map(o=>{const p=getProduct(o.productId);const pl=getPlatform(o.platformId);return `<tr><td><b>${o.code}</b></td><td>${fmtDate(o.date)}</td><td>${pl?pl.name:''}</td><td>${p?escapeHtml(p.name):''}</td><td>${formatCurrency(o.sellPrice*o.qty-o.discount)}</td><td>${escapeHtml(o.refundReason||'—')}</td><td><span class="badge b-${o.status}">${ORDER_STATUS_LABEL[o.status]}</span></td></tr>`}).join(''):'<tr><td colspan="7" class="muted" style="text-align:center;padding:20px">Chưa có đơn hoàn/hủy</td></tr>'}
+  </tbody></table></div>`;
+}
+
+/* ========================================================
+   PAGE: FINANCE OVERVIEW
+   ======================================================== */
+mainState.finance = {preset:'30d'};
+function pageFinance(){
+  const s=mainState.finance; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const d = computeDashboard(filters);
+  const settlement = computeSettlement(filters);
+  const debtPayable = state.expenses.filter(e=>e.date>=range.from&&e.date<=range.to).reduce((s,e)=>s+0,0); // placeholder none unpaid tracked
+  return `<div class="page-title">Tổng quan tài chính</div><div class="page-sub">Bức tranh tài chính toàn diện của doanh nghiệp</div>
+  <div class="filter-row">${[['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_quarter','Quý này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.finance.preset='${k}';render()">${l}</span>`).join('')}</div>
+  <div class="grid grid-kpi" style="margin-bottom:16px">
+    ${kpiCard({title:'Tổng doanh thu',value:d.cur.grossRevenue,icon:'revenue',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'Doanh thu thực nhận',value:d.cur.netReceived,icon:'income',grad:'var(--grad-2)',change:0})}
+    ${kpiCard({title:'Tổng giá vốn',value:d.cur.cogs,icon:'cogs',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Phí sàn',value:d.cur.platformFee,icon:'settlement',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Phí quản lý sàn',value:d.cur.managementFee,icon:'settlement',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Phí thanh toán',value:d.cur.paymentFee,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Phí vận chuyển',value:d.cur.shippingFee,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Hoa hồng KOC',value:d.cur.kocCommission,icon:'koc',grad:'var(--grad-1)',change:0,invert:true})}
+    ${kpiCard({title:'Quảng cáo',value:d.cur.adsCost,icon:'marketing',grad:'var(--grad-3)',change:0,invert:true})}
+    ${kpiCard({title:'Chi phí cố định',value:d.fixedCost,icon:'finance',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Chi phí khác',value:d.otherVarCost,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Lợi nhuận gộp',value:d.cur.grossProfit,icon:'profit',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'Lợi nhuận ròng',value:d.netProfitFinal,icon:'profit',grad:'var(--grad-1)',change:0})}
+  </div>
+  <div class="card"><div class="section-title">Bảng đối soát tài chính</div>
+  <div class="table-wrap"><table><thead><tr><th>Sàn</th><th>Doanh thu</th><th>Phí sàn</th><th>Phí quản lý sàn</th><th>Phí thanh toán</th><th>Phí vận chuyển</th><th>Tiền phải nhận</th><th>Tiền thực nhận</th><th>Chênh lệch</th></tr></thead><tbody>
+  ${settlement.map(x=>`<tr><td><b>${x.platform.name}</b></td><td>${formatCurrency(x.revenue)}</td><td>${formatCurrency(x.platformFee)}</td><td>${formatCurrency(x.managementFee)}</td><td>${formatCurrency(x.paymentFee)}</td><td>${formatCurrency(x.shippingFee)}</td><td>${formatCurrency(x.shouldReceive)}</td><td>${formatCurrency(x.actualReceived)}</td><td style="color:${Math.abs(x.diff)<1000?'var(--green)':'var(--red)'}">${formatCurrency(x.diff)}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+/* ========================================================
+   PAGE: EXPENSES
+   ======================================================== */
+mainState.expenses = {type:'all'};
+function pageExpenses(){
+  const s=mainState.expenses;
+  let list = state.expenses.filter(e=>s.type==='all'||e.type===s.type).sort((a,b)=>b.date.localeCompare(a.date));
+  const total = list.reduce((sum,e)=>sum+e.amount,0);
+  return `<div class="page-title">Chi phí</div><div class="page-sub">Quản lý toàn bộ chi phí phát sinh trong kinh doanh</div>
+  <div class="filter-row">
+    <select class="select" onchange="mainState.expenses.type=this.value;render()">
+      <option value="all">Tất cả loại chi phí</option>
+      ${EXPENSE_TYPES.map(t=>`<option value="${t.id}" ${s.type===t.id?'selected':''}>${t.name}</option>`).join('')}
+    </select>
+    <button class="btn" onclick="exportTableExcel('expenses')">${icon('download',14)} Export</button>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openExpenseModal()">${icon('plus',14)} Thêm chi phí</button>
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="kpi-title">TỔNG CHI PHÍ</div><div class="kpi-value" style="font-size:24px">${formatCurrency(total)}</div></div>
+  ${!list.length? emptyState('Chưa có chi phí nào','openExpenseModal()','+ Thêm chi phí'):`
+  <div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Mã CT</th><th>Loại chi phí</th><th>Sàn</th><th>Số tiền</th><th>Ghi chú</th><th></th></tr></thead><tbody>
+  ${list.map(e=>{const t=EXPENSE_TYPES.find(x=>x.id===e.type); const pl=getPlatform(e.platformId);
+    return `<tr><td>${fmtDate(e.date)}</td><td>${e.docNo||'—'}</td><td><span class="badge ${t&&t.variable?'b-yellow':'b-purple'}">${t?t.name:e.type}</span></td><td>${pl?pl.name:'—'}</td><td>${formatCurrency(e.amount)}</td><td>${escapeHtml(e.note||'')}</td><td><div class="row-actions"><button onclick="openExpenseModal('${e.id}')">${icon('edit',14)}</button><button onclick="deleteExpense('${e.id}')">${icon('trash',14)}</button></div></td></tr>`}).join('')}
+  </tbody></table></div>`}
+  `;
+}
+function openExpenseModal(id){
+  const editing = id? state.expenses.find(e=>e.id===id):null;
+  const e = editing || {id:null,date:todayISO(),docNo:'CT'+String(state.expenses.length+1000),type:'other',platformId:'',campaignId:'',kocId:'',productId:'',amount:0,note:''};
+  openModal({title:editing?'Sửa chi phí':'Thêm chi phí', bodyHtml:`
+  <form id="expenseForm">
+    <div class="form-grid2">
+      <div class="form-row"><label>Ngày *</label><input class="input" type="date" name="date" value="${e.date}" required></div>
+      <div class="form-row"><label>Mã chứng từ</label><input class="input" name="docNo" value="${escapeHtml(e.docNo||'')}"></div>
+      <div class="form-row"><label>Loại chi phí *</label><select class="select" name="type">${EXPENSE_TYPES.map(t=>`<option value="${t.id}" ${e.type===t.id?'selected':''}>${t.name}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Sàn</label><select class="select" name="platformId"><option value="">—</option>${state.platforms.map(p=>`<option value="${p.id}" ${e.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Campaign</label><select class="select" name="campaignId"><option value="">—</option>${state.campaigns.map(c=>`<option value="${c.id}" ${e.campaignId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>KOC</label><select class="select" name="kocId"><option value="">—</option>${state.kocs.map(k=>`<option value="${k.id}" ${e.kocId===k.id?'selected':''}>${escapeHtml(k.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Sản phẩm</label><select class="select" name="productId"><option value="">—</option>${state.products.map(p=>`<option value="${p.id}" ${e.productId===p.id?'selected':''}>${p.sku}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Số tiền *</label><input class="input" type="number" min="0" name="amount" value="${e.amount}" required></div>
+    </div>
+    <div class="form-row"><label>Ghi chú</label><textarea class="input" name="note">${escapeHtml(e.note||'')}</textarea></div>
+  </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitExpenseForm('${e.id||''}')">${icon('save',14)} Lưu</button>`});
+}
+function submitExpenseForm(id){
+  const fd = new FormData(document.getElementById('expenseForm'));
+  const amount = parseFloat(fd.get('amount'));
+  if(amount<0){ toast('Số tiền không được âm','error'); return; }
+  const typeDef = EXPENSE_TYPES.find(t=>t.id===fd.get('type'));
+  const data = {date:fd.get('date'),docNo:fd.get('docNo'),type:fd.get('type'),platformId:fd.get('platformId')||null,campaignId:fd.get('campaignId')||null,kocId:fd.get('kocId')||null,productId:fd.get('productId')||null,amount,note:fd.get('note'),isVariable:typeDef?typeDef.variable:false};
+  if(id){ Object.assign(state.expenses.find(e=>e.id===id), data); }
+  else { state.expenses.push(Object.assign({id:uid('exp')},data)); }
+  saveData(); closeModal(); render();
+  toast(id?'Cập nhật chi phí thành công':'Thêm chi phí thành công','success');
+}
+function deleteExpense(id){
+  confirmAction('Xóa chi phí này?', ()=>{ state.expenses=state.expenses.filter(e=>e.id!==id); saveData(); render(); toast('Đã xóa chi phí','success'); });
+}
+
+/* ========================================================
+   PAGE: PROFIT (Lợi nhuận theo công thức chuẩn)
+   ======================================================== */
+mainState.profit = {preset:'30d'};
+function pageProfit(){
+  const s=mainState.profit; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const d = computeDashboard(filters);
+  const cur=d.cur;
+  const steps=[
+    {label:'Doanh thu gộp', value:cur.grossRevenue},
+    {label:'Doanh thu thực (sau giảm giá)', value:cur.netRevenue},
+    {label:'- Giá vốn', value:-cur.cogs},
+    {label:'= Lợi nhuận gộp', value:cur.netRevenue-cur.cogs, bold:true},
+    {label:'- Phí sàn', value:-cur.platformFee},
+    {label:'- Phí quản lý sàn', value:-cur.managementFee},
+    {label:'- Phí thanh toán', value:-cur.paymentFee},
+    {label:'- Phí vận chuyển', value:-cur.shippingFee},
+    {label:'= Lợi nhuận sau phí sàn', value:cur.netRevenue-cur.cogs-cur.platformFee-cur.managementFee-cur.paymentFee-cur.shippingFee, bold:true},
+    {label:'- Quảng cáo & KOC', value:-(cur.kocCommission+cur.adsCost)},
+    {label:'= Lợi nhuận sau marketing', value:cur.netProfit, bold:true},
+    {label:'- Chi phí cố định', value:-d.fixedCost},
+    {label:'- Chi phí khác', value:-d.otherVarCost},
+    {label:'= LỢI NHUẬN RÒNG', value:d.netProfitFinal, bold:true, highlight:true},
+  ];
+  const margin = safeDiv(d.netProfitFinal, cur.netRevenue)*100;
+  return `<div class="page-title">Lợi nhuận</div><div class="page-sub">Phân tích thác nước lợi nhuận theo công thức chuẩn</div>
+  <div class="filter-row">${[['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.profit.preset='${k}';render()">${l}</span>`).join('')}</div>
+  <div class="two-col">
+    <div class="card">
+      ${steps.map(st=>`<div class="stat-line" style="${st.highlight?'background:rgba(139,92,246,0.08);border-radius:8px;padding:10px;margin:4px 0':''}"><span class="${st.bold?'':'muted'}" style="${st.bold?'font-weight:700':''}">${st.label}</span><b style="${st.highlight?'color:var(--green);font-size:15px':st.value<0?'color:var(--red)':''}">${formatCurrency(st.value)}</b></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="section-title">Biên lợi nhuận ròng</div>
+      <div style="font-size:32px;font-weight:800;color:${margin>=0?'var(--green)':'var(--red)'}">${formatPct(margin)}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Lợi nhuận ròng / Doanh thu thực × 100</div>
+      <hr class="sep">
+      <canvas id="chartProfitWaterfall" height="200"></canvas>
+    </div>
+  </div>`;
+}
+afterRenderHooks.profit = function(){
+  chartDefaults(); destroyCharts();
+  const s=mainState.profit; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const d = computeDashboard(filters);
+  if(document.getElementById('chartProfitWaterfall'))
+  CHARTS.wf = new Chart(document.getElementById('chartProfitWaterfall'),{type:'bar',data:{labels:['Giá vốn','Phí sàn','Phí Q.Lý','Phí T.Toán','KOC','Ads','Vận chuyển','Cố định','Khác'],datasets:[{label:'Chi phí',data:[d.cur.cogs,d.cur.platformFee,d.cur.managementFee,d.cur.paymentFee,d.cur.kocCommission,d.cur.adsCost,d.cur.shippingFee,d.fixedCost,d.otherVarCost],backgroundColor:CHART_COLORS}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>formatNumber(v)}}}}});
+};
+
+/* ========================================================
+   PAGE: SETTLEMENT
+   ======================================================== */
+mainState.settlement = {preset:'this_month'};
+function pageSettlement(){
+  const s=mainState.settlement; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const settlement = computeSettlement(filters);
+  return `<div class="page-title">Đối soát sàn</div><div class="page-sub">Kỳ đối soát: ${fmtDate(range.from)} - ${fmtDate(range.to)}</div>
+  <div class="filter-row">${[['this_month','Tháng này'],['last_month','Tháng trước'],['this_quarter','Quý này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.settlement.preset='${k}';render()">${l}</span>`).join('')}</div>
+  <div class="grid grid-2">
+  ${settlement.map(x=>`<div class="card">
+    <div class="section-title">${x.platform.name} ${Math.abs(x.diff)>1000?'<span class="badge b-red">⚠ Lệch</span>':'<span class="badge b-green">Khớp</span>'}</div>
+    <div class="stat-line"><span class="muted">Doanh thu hệ thống</span><b>${formatCurrency(x.revenue)}</b></div>
+    <div class="stat-line"><span class="muted">Phí sàn</span><b>${formatCurrency(x.platformFee)}</b></div>
+    <div class="stat-line"><span class="muted">Phí quản lý sàn</span><b>${formatCurrency(x.managementFee)}</b></div>
+    <div class="stat-line"><span class="muted">Phí thanh toán</span><b>${formatCurrency(x.paymentFee)}</b></div>
+    <div class="stat-line"><span class="muted">Phí vận chuyển</span><b>${formatCurrency(x.shippingFee)}</b></div>
+    <div class="stat-line"><span class="muted">Hoàn tiền</span><b>${formatCurrency(x.returns)}</b></div>
+    <div class="stat-line"><span class="muted">Tiền phải nhận</span><b>${formatCurrency(x.shouldReceive)}</b></div>
+    <div class="stat-line"><span class="muted">Tiền sàn thanh toán</span><b>${formatCurrency(x.actualReceived)}</b></div>
+    <hr class="sep">
+    <div class="stat-line"><span style="font-weight:700">Chênh lệch</span><b style="color:${Math.abs(x.diff)<1000?'var(--green)':'var(--red)'};font-size:15px">${formatCurrency(x.diff)}</b></div>
+  </div>`).join('')}
+  </div>`;
+}
+
+/* ========================================================
+   PAGE: CASH FLOW
+   ======================================================== */
+mainState.cashflow = {preset:'this_month'};
+function pageCashflow(){
+  const s=mainState.cashflow; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const cf = computeCashFlow(filters);
+  return `<div class="page-title">Dòng tiền</div><div class="page-sub">Theo dõi dòng tiền vào - ra của doanh nghiệp</div>
+  <div class="filter-row">${[['this_month','Tháng này'],['last_month','Tháng trước'],['this_quarter','Quý này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.cashflow.preset='${k}';render()">${l}</span>`).join('')}</div>
+  <div class="grid grid-kpi" style="margin-bottom:16px">
+    ${kpiCard({title:'Tiền vào',value:cf.cashIn,icon:'income',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'Tiền ra',value:cf.cashOut,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Dòng tiền thuần',value:cf.net,icon:'cashflow',grad:'var(--grad-3)',change:0})}
+  </div>
+  <div class="grid grid-2">
+    <div class="card"><div class="section-title">Cơ cấu tiền ra</div><canvas id="chartCashOut" height="220"></canvas></div>
+    <div class="card"><div class="section-title">Tổng hợp</div>
+      <div class="stat-line"><span class="muted">Giá vốn</span><b>${formatCurrency(cf.breakdown.cogsOut)}</b></div>
+      <div class="stat-line"><span class="muted">Hoa hồng KOC</span><b>${formatCurrency(cf.breakdown.kocOut)}</b></div>
+      <div class="stat-line"><span class="muted">Quảng cáo</span><b>${formatCurrency(cf.breakdown.adsOut)}</b></div>
+      <div class="stat-line"><span class="muted">Chi phí khác</span><b>${formatCurrency(cf.breakdown.cashOutExpenses)}</b></div>
+      <hr class="sep">
+      <div class="stat-line"><span style="font-weight:700">Tiền cuối kỳ (ước tính)</span><b style="color:var(--green)">${formatCurrency(cf.net)}</b></div>
+    </div>
+  </div>`;
+}
+afterRenderHooks.cashflow = function(){
+  chartDefaults(); destroyCharts();
+  const s=mainState.cashflow; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const cf = computeCashFlow(filters);
+  if(document.getElementById('chartCashOut'))
+  CHARTS.cashout = new Chart(document.getElementById('chartCashOut'),{type:'doughnut',data:{labels:['Giá vốn','KOC','Quảng cáo','Chi phí khác'],datasets:[{data:[cf.breakdown.cogsOut,cf.breakdown.kocOut,cf.breakdown.adsOut,cf.breakdown.cashOutExpenses],backgroundColor:CHART_COLORS}]},options:{plugins:{legend:{position:'bottom'}}}});
+};
+
+/* ========================================================
+   PAGE: BREAK-EVEN
+   ======================================================== */
+function pageBreakeven(){
+  const filters = dateRangeFor('this_month');
+  const f2 = {dateFrom:filters.from,dateTo:filters.to,platformId:'all'};
+  const orders = filterOrders(state.orders,f2).filter(isCounted);
+  const avgSell = safeDiv(orders.reduce((s,o)=>s+o.sellPrice*o.qty,0), orders.reduce((s,o)=>s+o.qty,0))||0;
+  let varCostPerOrder=0;
+  if(orders.length){ varCostPerOrder = orders.reduce((s,o)=>{const c=calcOrder(o); return s+c.platformFee+c.paymentFee+c.kocCommission+c.adsCost+c.shippingFee+c.cogs;},0)/orders.length; }
+  const aov = safeDiv(orders.reduce((s,o)=>s+o.sellPrice*o.qty-o.discount,0), orders.length);
+  const fixedCost = state.expenses.filter(e=>!e.isVariable && e.date>=filters.from && e.date<=filters.to).reduce((s,e)=>s+e.amount,0);
+  const contributionMargin = aov - varCostPerOrder;
+  const breakEvenOrders = safeDiv(fixedCost, contributionMargin);
+  const breakEvenRevenue = breakEvenOrders * aov;
+  const currentOrders = orders.length;
+  const progress = Math.min(100, safeDiv(currentOrders, breakEvenOrders||1)*100);
+  return `<div class="page-title">Phân tích Break-Even</div><div class="page-sub">Điểm hòa vốn dựa trên dữ liệu tháng này</div>
+  <div class="grid grid-3" style="margin-bottom:16px">
+    ${kpiCard({title:'Contribution Margin/đơn',value:contributionMargin,icon:'gauge',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'Break-even (số đơn)',value:breakEvenOrders,isCount:true,icon:'orders',grad:'var(--grad-2)',change:0})}
+    ${kpiCard({title:'Break-even (doanh thu)',value:breakEvenRevenue,icon:'revenue',grad:'var(--grad-3)',change:0})}
+  </div>
+  <div class="card">
+    <div class="section-title">Tiến độ đạt điểm hòa vốn tháng này</div>
+    <div class="progress-outer"><div class="progress-inner" style="width:${progress}%"></div></div>
+    <div class="muted" style="margin-top:8px;font-size:12.5px">${formatNumber(currentOrders)} / ${formatNumber(Math.round(breakEvenOrders))} đơn (${progress.toFixed(0)}%)</div>
+    <hr class="sep">
+    <div class="stat-line"><span class="muted">AOV (giá trị đơn hàng trung bình)</span><b>${formatCurrency(aov)}</b></div>
+    <div class="stat-line"><span class="muted">Chi phí biến đổi / đơn</span><b>${formatCurrency(varCostPerOrder)}</b></div>
+    <div class="stat-line"><span class="muted">Chi phí cố định tháng này</span><b>${formatCurrency(fixedCost)}</b></div>
+  </div>`;
+}
+
+/* ========================================================
+   PAGE: KOC OVERVIEW
+   ======================================================== */
+mainState.koc_overview = {preset:'30d'};
+function pageKocOverview(){
+  const s=mainState.koc_overview; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const km = computeKocScore(computeKocMetrics(filters));
+  const totalKoc = state.kocs.length;
+  const activeKoc = state.kocs.filter(k=>['running','posted','producing'].includes(k.status)).length;
+  const postedKoc = state.kocs.filter(k=>k.status==='posted'||k.status==='running').length;
+  const totalVideos = state.kocs.reduce((s,k)=>s+k.videos,0);
+  const totalOrders = km.reduce((s,m)=>s+m.orderCount,0);
+  const totalRevenue = km.reduce((s,m)=>s+m.revenue,0);
+  const totalCommission = km.reduce((s,m)=>s+m.commission,0);
+  const totalCost = km.reduce((s,m)=>s+m.totalCost,0);
+  const totalProfit = totalRevenue - totalCost;
+  const roas = safeDiv(totalRevenue,totalCost); const roi = safeDiv(totalProfit,totalCost)*100;
+  return `<div class="page-title">Tổng quan KOC</div><div class="page-sub">Hiệu quả hoạt động KOC / Affiliate</div>
+  <div class="filter-row">${[['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.koc_overview.preset='${k}';render()">${l}</span>`).join('')}</div>
+  <div class="grid grid-kpi" style="margin-bottom:16px">
+    ${kpiCard({title:'Tổng KOC',value:totalKoc,isCount:true,icon:'koc',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'KOC đang hoạt động',value:activeKoc,isCount:true,icon:'koc',grad:'var(--grad-2)',change:0})}
+    ${kpiCard({title:'KOC đã đăng',value:postedKoc,isCount:true,icon:'check',grad:'var(--grad-3)',change:0})}
+    ${kpiCard({title:'Tổng video',value:totalVideos,isCount:true,icon:'star',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'Tổng đơn',value:totalOrders,isCount:true,icon:'orders',grad:'var(--grad-2)',change:0})}
+    ${kpiCard({title:'Tổng doanh thu',value:totalRevenue,icon:'revenue',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'Tổng hoa hồng',value:totalCommission,icon:'commission',grad:'var(--grad-3)',change:0,invert:true})}
+    ${kpiCard({title:'Tổng chi phí KOC',value:totalCost,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Lợi nhuận KOC',value:totalProfit,icon:'profit',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'ROAS',value:roas,isRatio:true,icon:'roas',grad:'var(--grad-2)',change:0})}
+    ${kpiCard({title:'ROI',value:roi,isPct:true,icon:'roi',grad:'var(--grad-1)',change:0})}
+  </div>
+  <div class="grid grid-2" style="margin-bottom:14px">
+    <div class="card"><div class="section-title">Top KOC theo doanh thu</div><canvas id="chartKocRev" height="220"></canvas></div>
+    <div class="card"><div class="section-title">Top KOC theo ROI</div><canvas id="chartKocRoi" height="220"></canvas></div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card"><div class="section-title">Doanh thu theo nhóm</div><canvas id="chartKocGroupRev" height="220"></canvas></div>
+    <div class="card"><div class="section-title">Số KOC theo trạng thái</div><canvas id="chartKocStatus" height="220"></canvas></div>
+  </div>`;
+}
+afterRenderHooks.koc_overview = function(){
+  chartDefaults(); destroyCharts();
+  const s=mainState.koc_overview; const range=dateRangeFor(s.preset);
+  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+  const km = computeKocMetrics(filters).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
+  CHARTS.kr = new Chart(document.getElementById('chartKocRev'),{type:'bar',data:{labels:km.map(m=>m.koc.name.slice(0,12)),datasets:[{label:'Doanh thu',data:km.map(m=>m.revenue),backgroundColor:'#8B5CF6'}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>formatNumber(v)}}}}});
+  const kroi = computeKocMetrics(filters).filter(m=>m.orderCount>0).sort((a,b)=>b.roi-a.roi).slice(0,10);
+  CHARTS.kroi = new Chart(document.getElementById('chartKocRoi'),{type:'bar',data:{labels:kroi.map(m=>m.koc.name.slice(0,12)),datasets:[{label:'ROI %',data:kroi.map(m=>m.roi),backgroundColor:'#EC4899'}]},options:{indexAxis:'y',plugins:{legend:{display:false}}}});
+  const groupRev = state.kocGroups.map(g=>{ const list=computeKocMetrics(filters).filter(m=>m.koc.groupId===g.id); return list.reduce((s,m)=>s+m.revenue,0); });
+  CHARTS.kgr = new Chart(document.getElementById('chartKocGroupRev'),{type:'doughnut',data:{labels:state.kocGroups.map(g=>g.name),datasets:[{data:groupRev,backgroundColor:CHART_COLORS}]},options:{plugins:{legend:{position:'bottom'}}}});
+  const statusCounts = KOC_STATUSES.map(st=>state.kocs.filter(k=>k.status===st).length);
+  CHARTS.kst = new Chart(document.getElementById('chartKocStatus'),{type:'pie',data:{labels:KOC_STATUSES.map(s=>KOC_STATUS_LABEL[s]),datasets:[{data:statusCounts,backgroundColor:CHART_COLORS}]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:9,font:{size:10}}}}}});
+};
+
+/* ========================================================
+   PAGE: KOC LIST
+   ======================================================== */
+mainState.koc_list = {group:'all', search:''};
+function pageKocList(){
+  const s=mainState.koc_list;
+  const filters = dateRangeForFull();
+  const scored = computeKocScore(computeKocMetrics(filters));
+  let list = scored.filter(m=>{
+    if(s.group!=='all' && m.koc.groupId!==s.group) return false;
+    if(s.search){ const q=s.search.toLowerCase(); if(!(m.koc.name.toLowerCase().includes(q)||m.koc.username.toLowerCase().includes(q))) return false; }
+    return true;
+  });
+  return `<div class="page-title">Danh sách KOC</div><div class="page-sub">Quản lý toàn bộ KOC / Affiliate hợp tác</div>
+  <div class="filter-row">
+    <input class="input" placeholder="Tìm KOC, username..." value="${escapeHtml(s.search)}" oninput="mainState.koc_list.search=this.value;render()">
+    <select class="select" onchange="mainState.koc_list.group=this.value;render()">
+      <option value="all">Tất cả nhóm</option>
+      ${state.kocGroups.map(g=>`<option value="${g.id}" ${s.group===g.id?'selected':''}>${g.name}</option>`).join('')}
+    </select>
+    <button class="btn" onclick="downloadTemplate('kocs')">${icon('download',14)} Template</button>
+    <button class="btn" onclick="exportTableExcel('koc')">${icon('download',14)} Export</button>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openKocModal()">${icon('plus',14)} Thêm KOC</button>
+  </div>
+  ${!list.length? emptyState('Chưa có KOC nào','openKocModal()','+ Thêm KOC'):`
+  <div class="table-wrap"><table><thead><tr><th>KOC</th><th>Nền tảng</th><th>Nhóm</th><th>Follower</th><th>Doanh thu</th><th>GMV tháng</th><th>Số video</th><th>Liên hệ</th><th>Score</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+  ${list.map(m=>{const k=m.koc; const g=getKocGroup(k.groupId);
+    return `<tr>
+      <td><b>${escapeHtml(k.name)}</b><div class="muted" style="font-size:11px">${escapeHtml(k.username)}</div></td>
+      <td>${escapeHtml(k.platform)}</td>
+      <td><span class="badge b-purple">${g?g.name:'—'}</span></td>
+      <td>${formatNumber(k.followers)}</td>
+      <td>${formatCurrency(m.revenue)}</td>
+      <td>${formatCurrency(k.gmvMonthly||0)}</td>
+      <td>${k.videos||0}</td>
+      <td>${escapeHtml(k.contact||'—')}</td>
+      <td><span class="badge ${m.tierColor}">${m.score} · ${m.tier}</span></td>
+      <td><span class="badge b-purple">${KOC_STATUS_LABEL[k.status]}</span></td>
+      <td><div class="row-actions"><button onclick="viewKoc('${k.id}')">${icon('eye',14)}</button><button onclick="openKocModal('${k.id}')">${icon('edit',14)}</button><button onclick="deleteKoc('${k.id}')">${icon('trash',14)}</button></div></td>
+    </tr>`}).join('')}
+  </tbody></table></div>`}
+  `;
+}
+function openKocModal(id){
+  const editing = id? getKoc(id):null;
+  const k = editing || {id:null,name:'',username:'',platform:'TikTok',link:'',groupId:state.kocGroups[0]?.id,ownerId:state.employees[0]?.id||'',status:'potential',followers:0,engagement:0,videos:0,contact:'',gmvMonthly:0,dateLast:todayISO()};
+  openModal({title:editing?'Sửa KOC':'Thêm KOC', bodyHtml:`
+  <form id="kocForm">
+    <div class="form-grid2">
+      <div class="form-row"><label>Tên KOC *</label><input class="input" name="name" value="${escapeHtml(k.name)}" required></div>
+      <div class="form-row"><label>Username</label><input class="input" name="username" value="${escapeHtml(k.username)}"></div>
+      <div class="form-row"><label>Nền tảng</label><select class="select" name="platform"><option ${k.platform==='TikTok'?'selected':''}>TikTok</option><option ${k.platform==='Facebook'?'selected':''}>Facebook</option><option ${k.platform==='Instagram'?'selected':''}>Instagram</option><option ${k.platform==='Youtube'?'selected':''}>Youtube</option></select></div>
+      <div class="form-row"><label>Link</label><input class="input" name="link" value="${escapeHtml(k.link)}"></div>
+      <div class="form-row"><label>Nhóm KOC</label><select class="select" name="groupId">${state.kocGroups.map(g=>`<option value="${g.id}" ${k.groupId===g.id?'selected':''}>${g.name}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Người phụ trách</label><select class="select" name="ownerId">${state.employees.map(e=>`<option value="${e.id}" ${k.ownerId===e.id?'selected':''}>${escapeHtml(e.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Trạng thái</label><select class="select" name="status">${KOC_STATUSES.map(st=>`<option value="${st}" ${k.status===st?'selected':''}>${KOC_STATUS_LABEL[st]}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Follower</label><input class="input" type="number" min="0" name="followers" value="${k.followers}"></div>
+      <div class="form-row"><label>Engagement (%)</label><input class="input" type="number" min="0" max="100" step="0.1" name="engagement" value="${k.engagement}"></div>
+      <div class="form-row"><label>Số video</label><input class="input" type="number" min="0" name="videos" value="${k.videos}"></div>
+      <div class="form-row"><label>Liên hệ (SĐT/Email)</label><input class="input" name="contact" value="${escapeHtml(k.contact||'')}"></div>
+      <div class="form-row"><label>GMV theo tháng</label><input class="input" type="number" min="0" name="gmvMonthly" value="${k.gmvMonthly||0}"></div>
+    </div>
+  </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitKocForm('${k.id||''}')">${icon('save',14)} Lưu</button>`});
+}
+function submitKocForm(id){
+  const fd = new FormData(document.getElementById('kocForm'));
+  const name = fd.get('name').trim(); if(!name){ toast('Vui lòng nhập tên KOC','error'); return; }
+  const engagement = parseFloat(fd.get('engagement')||0);
+  if(engagement>100||engagement<0){ toast('Engagement phải trong khoảng 0-100%','error'); return; }
+  const data = {name,username:fd.get('username'),platform:fd.get('platform'),link:fd.get('link'),groupId:fd.get('groupId'),ownerId:fd.get('ownerId'),status:fd.get('status'),followers:parseInt(fd.get('followers')||0),engagement,videos:parseInt(fd.get('videos')||0),contact:fd.get('contact')||'',gmvMonthly:parseFloat(fd.get('gmvMonthly')||0),dateLast:todayISO()};
+  if(id){ Object.assign(getKoc(id),data); } else { state.kocs.push(Object.assign({id:uid('koc')},data)); }
+  saveData(); closeModal(); render();
+  toast(id?'Cập nhật KOC thành công':'Thêm KOC thành công','success');
+}
+function deleteKoc(id){
+  confirmAction('Xóa KOC này? Các dữ liệu doanh thu/booking liên quan sẽ giữ nguyên nhưng mất liên kết.', ()=>{
+    state.kocs = state.kocs.filter(k=>k.id!==id); saveData(); render(); toast('Đã xóa KOC','success');
+  });
+}
+function viewKoc(id){
+  const filters = dateRangeForFull();
+  const m = computeKocScore(computeKocMetrics(filters)).find(x=>x.koc.id===id);
+  if(!m) return;
+  const k = m.koc;
+  openModal({title:'Chi tiết: '+k.name, bodyHtml:`
+    <div class="stat-line"><span class="muted">Liên hệ</span><b>${escapeHtml(k.contact||'—')}</b></div>
+    <div class="stat-line"><span class="muted">Số video</span><b>${k.videos||0}</b></div>
+    <div class="stat-line"><span class="muted">GMV theo tháng</span><b>${formatCurrency(k.gmvMonthly||0)}</b></div>
+    <hr class="sep">
+    <div class="stat-line"><span class="muted">Doanh thu cho shop</span><b>${formatCurrency(m.revenue)}</b></div>
+    <div class="stat-line"><span class="muted">Score</span><b><span class="badge ${m.tierColor}">${m.score} · ${m.tier}</span></b></div>
+  `, footerHtml:`<button class="btn" onclick="closeModal()">Đóng</button>`});
+}
+
+/* ========================================================
+   PAGE: KOC GROUPS
+   ======================================================== */
+function pageKocGroup(){
+  const filters = dateRangeForFull();
+  const km = computeKocMetrics(filters);
+  return `<div class="page-title">Nhóm KOC</div><div class="page-sub">Quản lý phân nhóm KOC theo hiệu quả</div>
+  <div class="filter-row"><button class="btn btn-primary" onclick="openGroupModal()">${icon('plus',14)} Thêm nhóm</button></div>
+  <div class="grid grid-3">
+  ${state.kocGroups.map(g=>{
+    const list = km.filter(m=>m.koc.groupId===g.id);
+    const revenue = list.reduce((s,m)=>s+m.revenue,0);
+    const count = list.length;
+    return `<div class="card">
+      <div class="section-title">${escapeHtml(g.name)} <span class="badge b-purple">${count} KOC</span></div>
+      <div class="stat-line"><span class="muted">Doanh thu nhóm</span><b>${formatCurrency(revenue)}</b></div>
+      <div class="row-actions" style="margin-top:10px">
+        <button class="btn btn-sm btn-primary" onclick="viewGroupMembers('${g.id}')">${icon('eye',13)} Xem KOC</button>
+        <button class="btn btn-sm" onclick="openGroupModal('${g.id}')">${icon('edit',13)} Sửa</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteGroup('${g.id}')">${icon('trash',13)} Xóa</button>
+      </div>
+    </div>`;
+  }).join('')}
+  </div>`;
+}
+function openGroupModal(id){
+  const editing = id? getKocGroup(id):null;
+  openModal({title:editing?'Sửa nhóm KOC':'Thêm nhóm KOC', bodyHtml:`<form id="groupForm"><div class="form-row"><label>Tên nhóm *</label><input class="input" name="name" value="${editing?escapeHtml(editing.name):''}" required></div></form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitGroupForm('${id||''}')">${icon('save',14)} Lưu</button>`});
+}
+function submitGroupForm(id){
+  const name = document.querySelector('#groupForm input[name="name"]').value.trim();
+  if(!name){ toast('Vui lòng nhập tên nhóm','error'); return; }
+  if(id){ getKocGroup(id).name=name; } else { state.kocGroups.push({id:uid('grp'),name}); }
+  saveData(); closeModal(); render(); toast('Đã lưu nhóm KOC','success');
+}
+function deleteGroup(id){
+  if(state.kocs.some(k=>k.groupId===id)){ toast('Không thể xóa nhóm đang có KOC. Hãy chuyển KOC sang nhóm khác trước.','warning'); return; }
+  confirmAction('Xóa nhóm KOC này?', ()=>{ state.kocGroups=state.kocGroups.filter(g=>g.id!==id); saveData(); render(); toast('Đã xóa nhóm','success'); });
+}
+function viewGroupMembers(id){
+  const g = getKocGroup(id); if(!g) return;
+  const filters = dateRangeForFull();
+  const members = computeKocScore(computeKocMetrics(filters)).filter(m=>m.koc.groupId===id).sort((a,b)=>b.score-a.score);
+  openModal({title:'KOC trong nhóm: '+g.name, wide:true, bodyHtml: members.length? `
+  <div class="table-wrap"><table><thead><tr><th>KOC</th><th>Nền tảng</th><th>Liên hệ</th><th>Doanh thu</th><th>GMV tháng</th><th>Score</th><th>Trạng thái</th></tr></thead><tbody>
+  ${members.map(m=>{const k=m.koc; return `<tr><td><b>${escapeHtml(k.name)}</b></td><td>${escapeHtml(k.platform)}</td><td>${escapeHtml(k.contact||'—')}</td><td>${formatCurrency(m.revenue)}</td><td>${formatCurrency(k.gmvMonthly||0)}</td><td><span class="badge ${m.tierColor}">${m.score} · ${m.tier}</span></td><td><span class="badge b-purple">${KOC_STATUS_LABEL[k.status]}</span></td></tr>`}).join('')}
+  </tbody></table></div>` : `<div class="empty-state">${icon('info',28)}<div>Nhóm này chưa có KOC nào</div></div>`,
+  footerHtml:`<button class="btn" onclick="closeModal()">Đóng</button>`});
+}
+
+/* ========================================================
+   PAGE: CAMPAIGNS
+   ======================================================== */
+function pageCampaigns(){
+  const list = state.campaigns;
+  return `<div class="page-title">Chiến dịch KOC</div><div class="page-sub">Quản lý các chiến dịch marketing / KOC (dữ liệu nhập thủ công)</div>
+  <div class="filter-row"><button class="btn btn-primary" onclick="openCampaignModal()">${icon('plus',14)} Thêm chiến dịch</button></div>
+  ${!list.length? emptyState('Chưa có chiến dịch nào','openCampaignModal()','+ Thêm chiến dịch'):`
+  <div class="table-wrap"><table><thead><tr><th>Chiến dịch</th><th>Thời gian</th><th>Sản phẩm</th><th>KOC tham gia</th><th>Budget</th><th>Doanh thu</th><th>Chi phí thực tế</th><th>Lợi nhuận</th><th>ROAS</th><th>ROI</th><th></th></tr></thead><tbody>
+  ${list.map(c=>{const p=getProduct(c.productId);
+    const revenue=c.actualRevenue||0, cost=c.actualCost||0, profit=revenue-cost, roas=safeDiv(revenue,cost), roi=safeDiv(profit,cost)*100;
+    return `<tr><td><b>${escapeHtml(c.name)}</b></td><td>${fmtDate(c.start)} - ${fmtDate(c.end)}</td><td>${p?escapeHtml(p.name):''}</td><td>${c.kocCount||0}</td><td>${formatCurrency(c.budget)}</td><td>${formatCurrency(revenue)}</td><td>${formatCurrency(cost)}</td><td style="color:${profit>=0?'var(--green)':'var(--red)'}">${formatCurrency(profit)}</td><td>${roas.toFixed(2)}x</td><td>${formatPct(roi)}</td>
+    <td><div class="row-actions"><button onclick="openCampaignModal('${c.id}')">${icon('edit',14)}</button><button onclick="deleteCampaign('${c.id}')">${icon('trash',14)}</button></div></td></tr>`}).join('')}
+  </tbody></table></div>`}
+  `;
+}
+function openCampaignModal(id){
+  const editing = id? getCampaign(id):null;
+  const c = editing || {id:null,name:'',start:todayISO(),end:addDays(todayISO(),14),productId:state.products[0]?.id,platformId:state.platforms[0].id,budget:0,actualRevenue:0,actualCost:0,kocCount:0,note:''};
+  openModal({title:editing?'Sửa chiến dịch':'Thêm chiến dịch', bodyHtml:`
+  <form id="campaignForm">
+    <div class="form-row"><label>Tên chiến dịch *</label><input class="input" name="name" value="${escapeHtml(c.name)}" required></div>
+    <div class="form-grid2">
+      <div class="form-row"><label>Bắt đầu</label><input class="input" type="date" name="start" value="${c.start}"></div>
+      <div class="form-row"><label>Kết thúc</label><input class="input" type="date" name="end" value="${c.end}"></div>
+      <div class="form-row"><label>Sản phẩm</label><select class="select" name="productId">${state.products.map(p=>`<option value="${p.id}" ${c.productId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Sàn</label><select class="select" name="platformId">${state.platforms.map(p=>`<option value="${p.id}" ${c.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Số KOC tham gia</label><input class="input" type="number" min="0" name="kocCount" value="${c.kocCount||0}"></div>
+      <div class="form-row"><label>Budget</label><input class="input" type="number" min="0" name="budget" value="${c.budget}"></div>
+      <div class="form-row"><label>Doanh thu thực tế</label><input class="input" type="number" min="0" name="actualRevenue" value="${c.actualRevenue||0}"></div>
+      <div class="form-row"><label>Chi phí thực tế</label><input class="input" type="number" min="0" name="actualCost" value="${c.actualCost||0}"></div>
+    </div>
+    <div class="form-row"><label>Ghi chú</label><textarea class="input" name="note">${escapeHtml(c.note||'')}</textarea></div>
+  </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitCampaignForm('${c.id||''}')">${icon('save',14)} Lưu</button>`});
+}
+function submitCampaignForm(id){
+  const fd = new FormData(document.getElementById('campaignForm'));
+  const name = fd.get('name').trim(); if(!name){ toast('Vui lòng nhập tên chiến dịch','error'); return; }
+  if(fd.get('end')<fd.get('start')){ toast('Ngày kết thúc phải sau ngày bắt đầu','error'); return; }
+  const data = {name,start:fd.get('start'),end:fd.get('end'),productId:fd.get('productId'),platformId:fd.get('platformId'),kocCount:parseInt(fd.get('kocCount')||0),budget:parseFloat(fd.get('budget')||0),actualRevenue:parseFloat(fd.get('actualRevenue')||0),actualCost:parseFloat(fd.get('actualCost')||0),note:fd.get('note')||''};
+  if(id){ Object.assign(getCampaign(id),data); } else { state.campaigns.push(Object.assign({id:uid('camp')},data)); }
+  saveData(); closeModal(); render(); toast(id?'Cập nhật chiến dịch':'Thêm chiến dịch thành công','success');
+}
+function deleteCampaign(id){
+  confirmAction('Xóa chiến dịch này?', ()=>{ state.campaigns=state.campaigns.filter(c=>c.id!==id); state.ads=state.ads.filter(a=>a.campaign!==id); saveData(); render(); toast('Đã xóa chiến dịch','success'); });
+}
+
+/* ========================================================
+   PAGE: BOOKINGS (Kanban)
+   ======================================================== */
+let dragBookingId = null;
+function pageBookings(){
+  return `<div class="page-title">Booking KOC</div><div class="page-sub">Pipeline quản lý booking theo trạng thái (kéo thả để chuyển trạng thái)</div>
+  <div class="filter-row"><button class="btn btn-primary" onclick="openBookingModal()">${icon('plus',14)} Thêm booking</button></div>
+  <div class="kanban">
+  ${BOOKING_STATUSES.map(st=>{
+    const items = state.bookings.filter(b=>b.status===st);
+    return `<div class="kanban-col" data-status="${st}" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="onBookingDrop(event,'${st}')">
+      <h4>${BOOKING_STATUS_LABEL[st]} <span>${items.length}</span></h4>
+      ${items.map(b=>{
+        const koc=getKoc(b.kocId); const p=getProduct(b.productId);
+        const overdue = b.status!=='done'&&b.status!=='cancelled'&&b.deadline<todayISO();
+        return `<div class="kanban-card" draggable="true" ondragstart="dragBookingId='${b.id}'" onclick="openBookingModal('${b.id}')">
+          <b>${koc?escapeHtml(koc.name):'—'}</b>
+          <div class="kc-meta">${p?escapeHtml(p.name):''}</div>
+          <div class="kc-meta">Giá: ${formatCurrency(b.priceBooking)} · HH: ${b.commissionPct}%</div>
+          <div class="kc-meta" style="color:${overdue?'var(--red)':'inherit'}">Deadline: ${fmtDate(b.deadline)}${overdue?' ⚠':''}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('')}
+  </div>`;
+}
+function onBookingDrop(e,status){
+  e.currentTarget.classList.remove('dragover');
+  if(!dragBookingId) return;
+  const b = state.bookings.find(x=>x.id===dragBookingId);
+  if(b){ b.status=status; saveData(); render(); toast('Đã cập nhật trạng thái booking','success'); }
+  dragBookingId=null;
+}
+function openBookingModal(id){
+  const editing = id? state.bookings.find(b=>b.id===id):null;
+  const b = editing || {id:null,kocId:state.kocs[0]?.id,productId:state.products[0]?.id,priceBooking:0,commissionPct:10,deadline:addDays(todayISO(),7),status:'lead'};
+  if(!state.kocs.length){ toast('Vui lòng thêm KOC trước','warning'); return; }
+  openModal({title:editing?'Sửa booking':'Thêm booking', bodyHtml:`
+  <form id="bookingForm">
+    <div class="form-row"><label>KOC *</label><select class="select" name="kocId">${state.kocs.map(k=>`<option value="${k.id}" ${b.kocId===k.id?'selected':''}>${escapeHtml(k.name)}</option>`).join('')}</select></div>
+    <div class="form-row"><label>Sản phẩm</label><select class="select" name="productId">${state.products.map(p=>`<option value="${p.id}" ${b.productId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+    <div class="form-grid2">
+      <div class="form-row"><label>Giá booking</label><input class="input" type="number" min="0" name="priceBooking" value="${b.priceBooking}"></div>
+      <div class="form-row"><label>Hoa hồng (%)</label><input class="input" type="number" min="0" max="100" name="commissionPct" value="${b.commissionPct}"></div>
+      <div class="form-row"><label>Deadline</label><input class="input" type="date" name="deadline" value="${b.deadline}"></div>
+      <div class="form-row"><label>Trạng thái</label><select class="select" name="status">${BOOKING_STATUSES.map(st=>`<option value="${st}" ${b.status===st?'selected':''}>${BOOKING_STATUS_LABEL[st]}</option>`).join('')}</select></div>
+    </div>
+  </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button>${editing?`<button class="btn btn-danger" onclick="deleteBooking('${b.id}')">${icon('trash',14)} Xóa</button>`:''}<button class="btn btn-primary" onclick="submitBookingForm('${b.id||''}')">${icon('save',14)} Lưu</button>`});
+}
+function submitBookingForm(id){
+  const fd = new FormData(document.getElementById('bookingForm'));
+  const commissionPct = parseFloat(fd.get('commissionPct'));
+  if(commissionPct>100||commissionPct<0){ toast('Hoa hồng phải trong khoảng 0-100%','error'); return; }
+  const data = {kocId:fd.get('kocId'),productId:fd.get('productId'),priceBooking:parseFloat(fd.get('priceBooking')||0),commissionPct,deadline:fd.get('deadline'),status:fd.get('status')};
+  if(id){ Object.assign(state.bookings.find(b=>b.id===id),data); } else { state.bookings.push(Object.assign({id:uid('bk')},data)); }
+  saveData(); closeModal(); render(); toast(id?'Cập nhật booking':'Thêm booking thành công','success');
+}
+function deleteBooking(id){
+  confirmAction('Xóa booking này?', ()=>{ state.bookings=state.bookings.filter(b=>b.id!==id); saveData(); closeModal(); render(); toast('Đã xóa booking','success'); });
+}
+
+/* ========================================================
+   PAGE: ADS / MARKETING
+   ======================================================== */
+function pageAds(){
+  const ads = state.ads.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const totalCost = ads.reduce((s,a)=>s+a.cost,0);
+  const totalRevenue = ads.reduce((s,a)=>s+a.revenue,0);
+  const totalClicks = ads.reduce((s,a)=>s+a.clicks,0);
+  const totalImpr = ads.reduce((s,a)=>s+a.impressions,0);
+  const totalOrders = ads.reduce((s,a)=>s+a.orders,0);
+  const roas = safeDiv(totalRevenue,totalCost); const roi = safeDiv(totalRevenue-totalCost,totalCost)*100;
+  const cpc = safeDiv(totalCost,totalClicks); const cpa=safeDiv(totalCost,totalOrders);
+  const ctr = safeDiv(totalClicks,totalImpr)*100; const cvr = safeDiv(totalOrders,totalClicks)*100;
+  return `<div class="page-title">Chi phí quảng cáo</div><div class="page-sub">Quản lý ngân sách và hiệu quả quảng cáo</div>
+  <div class="grid grid-kpi" style="margin-bottom:16px">
+    ${kpiCard({title:'Tổng chi phí Ads',value:totalCost,icon:'marketing',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'Doanh thu từ Ads',value:totalRevenue,icon:'revenue',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'ROAS',value:roas,isRatio:true,icon:'roas',grad:'var(--grad-3)',change:0})}
+    ${kpiCard({title:'ROI',value:roi,isPct:true,icon:'roi',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'CPC',value:cpc,icon:'money',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'CPA',value:cpa,icon:'cac',grad:'var(--grad-2)',change:0,invert:true})}
+    ${kpiCard({title:'CTR',value:ctr,isPct:true,icon:'gauge',grad:'var(--grad-3)',change:0})}
+    ${kpiCard({title:'CVR',value:cvr,isPct:true,icon:'gauge',grad:'var(--grad-1)',change:0})}
+  </div>
+  <div class="filter-row"><button class="btn btn-primary" onclick="openAdModal()">${icon('plus',14)} Thêm chi phí quảng cáo</button></div>
+  ${!ads.length? emptyState('Chưa có dữ liệu quảng cáo','openAdModal()','+ Thêm quảng cáo'):`
+  <div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Campaign</th><th>Sản phẩm</th><th>Chi phí</th><th>Doanh thu</th><th>Đơn</th><th>Click</th><th>Impression</th><th>ROAS</th><th></th></tr></thead><tbody>
+  ${ads.map(a=>{const camp=getCampaign(a.campaign); const p=getProduct(a.productId); const r=safeDiv(a.revenue,a.cost);
+    return `<tr><td>${fmtDate(a.date)}</td><td>${camp?escapeHtml(camp.name):'—'}</td><td>${p?escapeHtml(p.name):''}</td><td>${formatCurrency(a.cost)}</td><td>${formatCurrency(a.revenue)}</td><td>${a.orders}</td><td>${formatNumber(a.clicks)}</td><td>${formatNumber(a.impressions)}</td><td>${r.toFixed(2)}x</td><td><div class="row-actions"><button onclick="deleteAd('${a.id}')">${icon('trash',14)}</button></div></td></tr>`}).join('')}
+  </tbody></table></div>`}
+  `;
+}
+function openAdModal(){
+  openModal({title:'Thêm chi phí quảng cáo', bodyHtml:`
+  <form id="adForm">
+    <div class="form-grid2">
+      <div class="form-row"><label>Ngày</label><input class="input" type="date" name="date" value="${todayISO()}"></div>
+      <div class="form-row"><label>Campaign</label><select class="select" name="campaign">${state.campaigns.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Sản phẩm</label><select class="select" name="productId">${state.products.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Sàn</label><select class="select" name="platformId">${state.platforms.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Chi phí *</label><input class="input" type="number" min="0" name="cost" value="0"></div>
+      <div class="form-row"><label>Doanh thu</label><input class="input" type="number" min="0" name="revenue" value="0"></div>
+      <div class="form-row"><label>Số đơn</label><input class="input" type="number" min="0" name="orders" value="0"></div>
+      <div class="form-row"><label>Click</label><input class="input" type="number" min="0" name="clicks" value="0"></div>
+      <div class="form-row"><label>Impression</label><input class="input" type="number" min="0" name="impressions" value="0"></div>
+    </div>
+  </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitAdForm()">${icon('save',14)} Lưu</button>`});
+}
+function submitAdForm(){
+  const fd = new FormData(document.getElementById('adForm'));
+  const data = {date:fd.get('date'),campaign:fd.get('campaign'),platformId:fd.get('platformId'),productId:fd.get('productId'),cost:parseFloat(fd.get('cost')||0),revenue:parseFloat(fd.get('revenue')||0),orders:parseInt(fd.get('orders')||0),clicks:parseInt(fd.get('clicks')||0),impressions:parseInt(fd.get('impressions')||0)};
+  if(data.clicks>data.impressions && data.impressions>0){ toast('Click không được lớn hơn Impression','error'); return; }
+  state.ads.push(Object.assign({id:uid('ad')},data));
+  saveData(); closeModal(); render(); toast('Thêm chi phí quảng cáo thành công','success');
+}
+function deleteAd(id){ confirmAction('Xóa dữ liệu quảng cáo này?', ()=>{ state.ads=state.ads.filter(a=>a.id!==id); saveData(); render(); toast('Đã xóa','success'); }); }
+
+/* ========================================================
+   PAGE: REPORTS
+   ======================================================== */
+mainState.reports = {tab:'revenue'};
+function pageReports(){
+  const s = mainState.reports;
+  const tabs=[['revenue','Doanh thu'],['profit','Lợi nhuận'],['product','Sản phẩm'],['koc','KOC'],['platform','Theo sàn'],['cashflow','Dòng tiền']];
+  const filters = dateRangeForFull();
+  let body='';
+  if(s.tab==='revenue'){
+    const orders = state.orders.filter(isCounted);
+    const byMonth={}; orders.forEach(o=>{ const m=o.date.slice(0,7); byMonth[m]=(byMonth[m]||0)+calcOrder(o).netRevenue; });
+    const months = Object.keys(byMonth).sort();
+    body = `<div class="table-wrap"><table><thead><tr><th>Tháng</th><th>Doanh thu</th></tr></thead><tbody>${months.map(m=>`<tr><td>${m}</td><td>${formatCurrency(byMonth[m])}</td></tr>`).join('')||'<tr><td colspan="2" class="muted" style="text-align:center;padding:20px">Chưa có dữ liệu</td></tr>'}</tbody></table></div>`;
+  } else if(s.tab==='profit'){
+    const d = computeDashboard(dateRangeFor('this_year'));
+    body = `<div class="card">
+      <div class="stat-line"><span>Doanh thu</span><b>${formatCurrency(d.cur.netRevenue)}</b></div>
+      <div class="stat-line"><span>Giá vốn</span><b>${formatCurrency(d.cur.cogs)}</b></div>
+      <div class="stat-line"><span>Phí (sàn+TT+VC)</span><b>${formatCurrency(d.cur.platformFee+d.cur.paymentFee+d.cur.shippingFee)}</b></div>
+      <div class="stat-line"><span>Marketing (KOC+Ads)</span><b>${formatCurrency(d.cur.kocCommission+d.cur.adsCost)}</b></div>
+      <div class="stat-line"><span>Chi phí cố định</span><b>${formatCurrency(d.fixedCost)}</b></div>
+      <div class="stat-line"><span style="font-weight:700">Lợi nhuận</span><b style="color:var(--green)">${formatCurrency(d.netProfitFinal)}</b></div>
+    </div>`;
+  } else if(s.tab==='product'){
+    const pm = computeProductMetrics(filters).sort((a,b)=>b.revenue-a.revenue);
+    body = `<div class="table-wrap"><table><thead><tr><th>Top</th><th>Sản phẩm</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Đã bán</th></tr></thead><tbody>${pm.slice(0,15).map((m,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(m.product.name)}</td><td>${formatCurrency(m.revenue)}</td><td>${formatCurrency(m.profit)}</td><td>${m.qty}</td></tr>`).join('')||'<tr><td colspan="5" class="muted" style="text-align:center;padding:20px">Chưa có dữ liệu</td></tr>'}</tbody></table></div>`;
+  } else if(s.tab==='koc'){
+    const km = computeKocScore(computeKocMetrics(filters)).sort((a,b)=>b.revenue-a.revenue);
+    body = `<div class="table-wrap"><table><thead><tr><th>Top</th><th>KOC</th><th>Nhóm</th><th>Doanh thu</th><th>ROI</th><th>Score</th></tr></thead><tbody>${km.slice(0,15).map((m,i)=>{const g=getKocGroup(m.koc.groupId); return `<tr><td>${i+1}</td><td>${escapeHtml(m.koc.name)}</td><td>${g?g.name:''}</td><td>${formatCurrency(m.revenue)}</td><td>${formatPct(m.roi)}</td><td>${m.score}</td></tr>`}).join('')||'<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">Chưa có dữ liệu</td></tr>'}</tbody></table></div>`;
+  } else if(s.tab==='platform'){
+    const platData = state.platforms.map(pl=>{
+      const orders = filterOrders(state.orders,{platformId:pl.id}).filter(isCounted);
+      let revenue=0,cogs=0,fees=0,profit=0;
+      orders.forEach(o=>{const c=calcOrder(o); revenue+=c.netRevenue; cogs+=c.cogs; fees+=c.platformFee+c.paymentFee; profit+=c.netProfit;});
+      return {pl,revenue,cogs,fees,profit,orders:orders.length,margin:safeDiv(profit,revenue)*100};
+    });
+    body = `<div class="table-wrap"><table><thead><tr><th>Sàn</th><th>Đơn</th><th>Doanh thu</th><th>Giá vốn</th><th>Phí</th><th>Lợi nhuận</th><th>Margin</th></tr></thead><tbody>${platData.map(x=>`<tr><td><b>${x.pl.name}</b></td><td>${x.orders}</td><td>${formatCurrency(x.revenue)}</td><td>${formatCurrency(x.cogs)}</td><td>${formatCurrency(x.fees)}</td><td>${formatCurrency(x.profit)}</td><td>${formatPct(x.margin)}</td></tr>`).join('')}</tbody></table></div>`;
+  } else if(s.tab==='cashflow'){
+    const cf = computeCashFlow(dateRangeFor('this_year'));
+    body = `<div class="card"><div class="stat-line"><span>Tiền vào</span><b>${formatCurrency(cf.cashIn)}</b></div><div class="stat-line"><span>Tiền ra</span><b>${formatCurrency(cf.cashOut)}</b></div><div class="stat-line"><span style="font-weight:700">Dòng tiền thuần</span><b>${formatCurrency(cf.net)}</b></div></div>`;
+  }
+  return `<div class="page-title">Báo cáo</div><div class="page-sub">Hệ thống báo cáo tổng hợp toàn diện</div>
+  <div class="tabs">${tabs.map(([k,l])=>`<button class="tab-btn ${s.tab===k?'active':''}" onclick="mainState.reports.tab='${k}';render()">${l}</button>`).join('')}</div>
+  <div class="filter-row"><button class="btn" onclick="exportReportExcel()">${icon('download',14)} Export báo cáo</button></div>
+  ${body}`;
+}
+function exportReportExcel(){
+  const s=mainState.reports;
+  let rows=[];
+  if(s.tab==='product') rows = computeProductMetrics(dateRangeForFull()).map(m=>({'Sản phẩm':m.product.name,'Doanh thu':m.revenue,'Lợi nhuận':m.profit,'Đã bán':m.qty}));
+  else if(s.tab==='koc') rows = computeKocMetrics(dateRangeForFull()).map(m=>({'KOC':m.koc.name,'Doanh thu':m.revenue,'ROI':m.roi.toFixed(1)}));
+  else { toast('Vui lòng chọn báo cáo Sản phẩm hoặc KOC để export chi tiết','warning'); return; }
+  const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Report');
+  XLSX.writeFile(wb,'bao-cao-'+s.tab+'-'+todayISO()+'.xlsx');
+  toast('Export báo cáo thành công','success');
+}
+
+/* ========================================================
+   PAGE: SETTINGS
+   ======================================================== */
+mainState.settings = {tab:'business'};
+function pageSettings(){
+  const s = mainState.settings;
+  const tabs=[['business','Thông tin doanh nghiệp'],['platforms','Cài đặt sàn'],['scoring','KOC Scoring'],['categories','Danh mục'],['backup','Backup/Restore'],['supabase','Kết nối Supabase']];
+  let body='';
+  const biz = state.settings.business;
+  if(s.tab==='business'){
+    body = `<div class="card" style="max-width:520px">
+      <div class="form-row"><label>Tên doanh nghiệp</label><input class="input" id="bizName" value="${escapeHtml(biz.name)}"></div>
+      <div class="form-row"><label>Email</label><input class="input" id="bizEmail" value="${escapeHtml(biz.email)}"></div>
+      <div class="form-row"><label>Số điện thoại</label><input class="input" id="bizPhone" value="${escapeHtml(biz.phone)}"></div>
+      <button class="btn btn-primary" onclick="saveBusinessSettings()">${icon('save',14)} Lưu cài đặt</button>
+    </div>`;
+  } else if(s.tab==='platforms'){
+    body = `<div class="muted" style="font-size:12px;margin-bottom:10px">Lưu ý: Phí sàn (%) và phí quản lý sàn nay được cấu hình theo từng sản phẩm trong danh mục Sản phẩm. Ở đây chỉ còn phí thanh toán và phí vận chuyển mặc định.</div>
+    <div class="table-wrap"><table><thead><tr><th>Sàn</th><th>% Phí thanh toán</th><th>Phí VC mặc định</th><th></th></tr></thead><tbody>
+    ${state.platforms.map((p,i)=>`<tr><td><b>${p.name}</b></td>
+      <td><input class="input" style="width:80px" type="number" step="0.1" value="${p.paymentFeePct}" onchange="updatePlatformField(${i},'paymentFeePct',this.value)"></td>
+      <td><input class="input" style="width:100px" type="number" value="${p.shippingFeeDefault}" onchange="updatePlatformField(${i},'shippingFeeDefault',this.value)"></td>
+      <td></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="muted" style="font-size:11.5px;margin-top:8px">Thay đổi được lưu tự động</div>`;
+  } else if(s.tab==='scoring'){
+    const w = state.settings.kocScoring;
+    body = `<div class="card" style="max-width:520px">
+      <div class="muted" style="margin-bottom:10px;font-size:12px">Tổng trọng số nên bằng 100</div>
+      ${Object.entries({revenue:'Doanh thu',orders:'Số đơn',roas:'ROAS',roi:'ROI',engagement:'Engagement',conversion:'Conversion'}).map(([k,l])=>`
+      <div class="form-row"><label>${l} (%)</label><input class="input" type="number" min="0" max="100" value="${w[k]}" onchange="updateScoringField('${k}',this.value)"></div>`).join('')}
+      <div class="muted" style="font-size:12px">Tổng hiện tại: <b>${Object.values(w).reduce((a,b)=>a+b,0)}%</b></div>
+    </div>`;
+  } else if(s.tab==='categories'){
+    body = `<div class="filter-row"><button class="btn btn-primary" onclick="addCategoryPrompt()">${icon('plus',14)} Thêm danh mục</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Danh mục</th><th></th></tr></thead><tbody>
+    ${state.categories.map(c=>`<tr><td>${escapeHtml(c.name)}</td><td><div class="row-actions"><button onclick="deleteCategory('${c.id}')">${icon('trash',14)}</button></div></td></tr>`).join('')}
+    </tbody></table></div>`;
+  } else if(s.tab==='backup'){
+    body = `<div class="grid grid-2">
+      <div class="card">
+        <div class="section-title">${icon('backup',16)} Backup dữ liệu</div>
+        <p class="muted" style="font-size:12.5px">Xuất toàn bộ dữ liệu hệ thống ra file JSON để lưu trữ hoặc chuyển sang máy khác.</p>
+        <button class="btn btn-primary" onclick="exportBackup()">${icon('download',14)} Backup Data</button>
+      </div>
+      <div class="card">
+        <div class="section-title">${icon('upload',16)} Restore dữ liệu</div>
+        <p class="muted" style="font-size:12.5px">Chọn file JSON backup để khôi phục lại toàn bộ dữ liệu.</p>
+        <button class="btn" onclick="document.getElementById('restoreFile').click()">${icon('upload',14)} Chọn file</button>
+        <input type="file" id="restoreFile" accept=".json" class="hidden" onchange="importBackup(this.files[0])">
+      </div>
+      <div class="card">
+        <div class="section-title" style="color:var(--yellow)">${icon('alert',16)} Xóa dữ liệu demo</div>
+        <p class="muted" style="font-size:12.5px">Xóa toàn bộ dữ liệu hiện tại và tạo lại bộ dữ liệu demo mới.</p>
+        <button class="btn" style="border-color:var(--yellow);color:var(--yellow)" onclick="confirmResetDemo()">Xóa &amp; Tạo lại Demo</button>
+      </div>
+      <div class="card">
+        <div class="section-title" style="color:var(--red)">${icon('alert',16)} Xóa toàn bộ dữ liệu</div>
+        <p class="muted" style="font-size:12.5px">Xóa sạch toàn bộ dữ liệu, đưa hệ thống về trạng thái trống hoàn toàn.</p>
+        <button class="btn btn-danger" onclick="confirmClearAll()">Xóa toàn bộ dữ liệu</button>
+      </div>
+    </div>`;
+  } else if(s.tab==='supabase'){
+    const cfg = getSupabaseConfig();
+    const statusColor = supabaseStatus==='connected'?'var(--green)': supabaseStatus==='connecting'?'var(--yellow)': supabaseStatus==='error'?'var(--red)':'var(--muted)';
+    const statusLabel = supabaseStatus==='connected'?'Đã kết nối': supabaseStatus==='connecting'?'Đang kiểm tra...': supabaseStatus==='error'?'Lỗi kết nối':'Chưa kết nối';
+    body = `
+    <div class="grid grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="section-title">${icon('backup',16)} Cấu hình Supabase</div>
+        <p class="muted" style="font-size:12.5px;margin-bottom:12px">Toàn bộ dữ liệu ECOM DIGITAL sẽ được đồng bộ 2 chiều dưới dạng 1 bản ghi JSON trong bảng <code>${SUPABASE_TABLE}</code> trên Supabase. Trình duyệt vẫn lưu bản sao trong localStorage để dùng offline.</p>
+        <div class="form-row"><label>Project URL *</label><input class="input" id="sbUrl" placeholder="https://xxxx.supabase.co" value="${escapeHtml(cfg?.url||'')}"></div>
+        <div class="form-row"><label>Anon Public Key *</label><input class="input" id="sbKey" placeholder="eyJhbGciOi..." value="${escapeHtml(cfg?.anonKey||'')}"></div>
+        <div class="form-row"><label>Mã cửa hàng (Store ID)</label><input class="input" id="sbStoreId" placeholder="default" value="${escapeHtml(cfg?.storeId||'default')}"></div>
+        <div class="form-row" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="sbAutoSync" ${cfg?.autoSync?'checked':''} style="width:16px;height:16px">
+          <label style="margin:0" for="sbAutoSync">Tự động đồng bộ lên Supabase mỗi khi có thay đổi</label>
+        </div>
+        <div class="row-actions" style="margin-top:6px">
+          <button class="btn btn-primary" onclick="saveSupabaseSettingsForm()">${icon('save',14)} Lưu &amp; Kết nối</button>
+          ${cfg? `<button class="btn btn-danger" onclick="disconnectSupabase()">${icon('x',14)} Ngắt kết nối</button>`:''}
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">Trạng thái kết nối</div>
+        <div class="stat-line"><span class="muted">Trạng thái</span><b style="color:${statusColor}">● ${statusLabel}</b></div>
+        <div class="stat-line"><span class="muted">Bảng dữ liệu</span><b>${SUPABASE_TABLE}</b></div>
+        <div class="stat-line"><span class="muted">Mã cửa hàng</span><b>${escapeHtml(cfg?.storeId||'default')}</b></div>
+        ${supabaseStatusMsg? `<div class="muted" style="color:var(--red);font-size:11.5px;margin-top:6px">${escapeHtml(supabaseStatusMsg)}</div>`:''}
+        <hr class="sep">
+        <div class="row-actions">
+          <button class="btn" onclick="testSupabaseConnection().then(render)">${icon('check',14)} Kiểm tra kết nối</button>
+          <button class="btn btn-primary" onclick="pushStateToSupabase(false)">${icon('upload',14)} Đồng bộ lên Supabase</button>
+        </div>
+        <div class="row-actions" style="margin-top:8px">
+          <button class="btn" onclick="confirmPullFromSupabase()">${icon('download',14)} Tải dữ liệu từ Supabase</button>
+        </div>
+        <p class="muted" style="font-size:11px;margin-top:10px">Lưu ý: "Tải dữ liệu từ Supabase" sẽ ghi đè toàn bộ dữ liệu hiện tại trên trình duyệt này.</p>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="section-title">Bước 1: Tạo bảng trên Supabase ${icon('info',15)}</div>
+      <p class="muted" style="font-size:12.5px">Mở Project trên supabase.com → SQL Editor → dán đoạn SQL dưới đây và chạy (chỉ cần làm 1 lần):</p>
+      <textarea class="input" id="sbSqlBox" readonly style="width:100%;min-height:180px;font-family:monospace;font-size:11.5px;white-space:pre">${escapeHtml(SUPABASE_SQL)}</textarea>
+      <button class="btn" style="margin-top:8px" onclick="copySupabaseSql()">${icon('download',14)} Copy SQL</button>
+    </div>
+    <div class="card">
+      <div class="section-title" style="color:var(--yellow)">${icon('alert',16)} Lưu ý bảo mật</div>
+      <p class="muted" style="font-size:12.5px;line-height:1.6">
+        App chạy hoàn toàn trên trình duyệt (không có backend riêng) nên Anon Key sẽ hiển thị công khai trong mã nguồn phía client.
+        Đoạn SQL ở trên bật quyền đọc/ghi công khai (RLS cho phép <code>true</code>) để app hoạt động được ngay, nghĩa là bất kỳ ai
+        có Project URL + Anon Key + đúng "Mã cửa hàng" đều có thể đọc/ghi dữ liệu này. Khuyến nghị:
+      </p>
+      <ul style="font-size:12.5px;color:var(--muted);line-height:1.8;padding-left:18px">
+        <li>Đặt "Mã cửa hàng" là một chuỗi khó đoán (không dùng "default" khi dùng thật)</li>
+        <li>Không lưu dữ liệu quá nhạy cảm (thông tin thẻ, mật khẩu, CCCD...) trong hệ thống này</li>
+        <li>Nếu cần bảo mật cao hơn, nên bổ sung Supabase Auth + RLS theo user thay vì policy mở công khai</li>
+      </ul>
+    </div>`;
+  }
+  return `<div class="page-title">Cài đặt</div><div class="page-sub">Cấu hình hệ thống ECOM DIGITAL</div>
+  <div class="tabs">${tabs.map(([k,l])=>`<button class="tab-btn ${s.tab===k?'active':''}" onclick="mainState.settings.tab='${k}';render()">${l}</button>`).join('')}</div>
+  ${body}`;
+}
+function saveBusinessSettings(){
+  state.settings.business.name = document.getElementById('bizName').value;
+  state.settings.business.email = document.getElementById('bizEmail').value;
+  state.settings.business.phone = document.getElementById('bizPhone').value;
+  saveData(); toast('Đã lưu cài đặt doanh nghiệp','success'); render();
+}
+function updatePlatformField(i,field,val){
+  state.platforms[i][field] = parseFloat(val)||0;
+  saveData(); toast('Đã cập nhật cài đặt sàn','success');
+}
+function updateScoringField(key,val){
+  const v = parseFloat(val); if(v<0||v>100){ toast('Trọng số phải từ 0-100','error'); render(); return; }
+  state.settings.kocScoring[key]=v; saveData(); toast('Đã cập nhật trọng số scoring','success'); render();
+}
+function addCategoryPrompt(){
+  openModal({title:'Thêm danh mục', bodyHtml:`<div class="form-row"><label>Tên danh mục *</label><input class="input" id="newCatName"></div>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitNewCategory()">Lưu</button>`});
+}
+function submitNewCategory(){
+  const name = document.getElementById('newCatName').value.trim();
+  if(!name){ toast('Vui lòng nhập tên danh mục','error'); return; }
+  state.categories.push({id:uid('cat'),name}); saveData(); closeModal(); render(); toast('Đã thêm danh mục','success');
+}
+function deleteCategory(id){
+  if(state.products.some(p=>p.category===id)){ toast('Không thể xóa danh mục đang có sản phẩm','warning'); return; }
+  confirmAction('Xóa danh mục này?', ()=>{ state.categories=state.categories.filter(c=>c.id!==id); saveData(); render(); toast('Đã xóa danh mục','success'); });
+}
+function confirmResetDemo(){
+  confirmAction('Toàn bộ dữ liệu hiện tại sẽ bị xóa và thay bằng dữ liệu demo mới. Tiếp tục?', ()=>{
+    resetData(); toast('Đã tạo lại dữ liệu demo','success'); navigate('dashboard');
+  });
+}
+function confirmClearAll(){
+  confirmAction('Toàn bộ dữ liệu sẽ bị xóa vĩnh viễn (không thể hoàn tác). Bạn có chắc chắn?', ()=>{
+    clearAllData(); toast('Đã xóa toàn bộ dữ liệu','success'); navigate('dashboard');
+  });
+}
+
+/* ---------------- PAGE MAP ---------------- */
+const PAGES = {
+  dashboard:pageDashboard, orders:pageOrders, products:pageProducts, revenue:pageRevenue, refunds:pageRefunds,
+  finance:pageFinance, expenses:pageExpenses, profit:pageProfit, settlement:pageSettlement, cashflow:pageCashflow, breakeven:pageBreakeven,
+  koc_overview:pageKocOverview, koc_list:pageKocList, koc_group:pageKocGroup, campaigns:pageCampaigns, bookings:pageBookings,
+  ads:pageAds, reports:pageReports, settings:pageSettings,
+};
+
+/* ---------------- INIT ---------------- */
+async function init(){
+  const loaded = loadData();
+  if(!loaded){
+    state = defaultState();
+    generateDemoData();
+    saveData();
+  }
+  const hashRoute = window.location.hash.replace('#','');
+  currentRoute = PAGES[hashRoute] ? hashRoute : 'dashboard';
+  render();
+  // Nếu đã cấu hình Supabase, thử tải dữ liệu mới nhất từ cloud (không chặn render ban đầu)
+  const cfg = getSupabaseConfig();
+  if(cfg){
+    initSupabaseClient();
+    const got = await pullStateFromSupabase(true);
+    if(got) render();
+    else testSupabaseConnection().then(()=>{ if(mainState.settings && mainState.settings.tab==='supabase') render(); });
+  }
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
