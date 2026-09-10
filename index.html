@@ -1532,9 +1532,10 @@ function downloadTemplate(type){
 /* ========================================================
    PAGE: PRODUCTS
    ======================================================== */
-mainState.products = {search:'', category:'all'};
+mainState.products = {search:'', category:'all', selected:[]};
 function pageProducts(){
   const s = mainState.products;
+  s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.products.some(p=>p.id===id)) : [];
   const filters = dateRangeForFull();
   const metrics = computeProductMetrics(filters);
   let list = metrics.filter(m=>{
@@ -1542,6 +1543,9 @@ function pageProducts(){
     if(s.search){ const q=s.search.toLowerCase(); if(!(m.product.name.toLowerCase().includes(q)||m.product.sku.toLowerCase().includes(q))) return false; }
     return true;
   });
+  const selectedSet = new Set(s.selected);
+  const selectedCount = s.selected.length;
+  const allVisibleSelected = list.length>0 && list.every(m=>selectedSet.has(m.product.id));
   return `
   <div class="page-title">Sản phẩm</div>
   <div class="page-sub">Quản lý danh mục sản phẩm và hiệu quả kinh doanh</div>
@@ -1557,13 +1561,25 @@ function pageProducts(){
     <button class="btn" onclick="exportTableExcel('products')">${icon('download',14)} Export</button>
     <button class="btn btn-primary" style="margin-left:auto" onclick="openProductModal()">${icon('plus',14)} Thêm sản phẩm</button>
   </div>
+  ${selectedCount?`<div class="filter-row" style="padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--card);margin-top:-4px">
+    <b style="font-size:12.5px">Đã chọn ${selectedCount} sản phẩm</b>
+    <select class="select" id="bulkProductStatus">
+      <option value="">Chuyển trạng thái...</option>
+      <option value="active">Hoạt động</option>
+      <option value="inactive">Ngừng bán</option>
+    </select>
+    <button class="btn" onclick="bulkUpdateProductStatus()">${icon('check',14)} Áp dụng</button>
+    <button class="btn btn-danger" onclick="bulkDeleteProducts()">${icon('trash',14)} Xóa đã chọn</button>
+    <button class="btn" onclick="clearProductSelection()">Bỏ chọn</button>
+  </div>`:''}
   ${!list.length? emptyState('Chưa có sản phẩm nào','openProductModal()','+ Thêm sản phẩm') : `
   <div class="table-wrap"><table>
-    <thead><tr><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
+    <thead><tr><th style="width:42px;text-align:center"><input type="checkbox" aria-label="Chọn tất cả sản phẩm đang hiển thị" ${allVisibleSelected?'checked':''} onchange="toggleProductSelectAll(this.checked)"></th><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>${list.map(m=>{
       const p=m.product; const cat=state.categories.find(c=>c.id===p.category);
       const marginTag = m.margin>=state.settings.productMarginThresholds.high? '<span class="badge b-green">🟢 Cao</span>' : m.margin<=state.settings.productMarginThresholds.low? '<span class="badge b-red">🔴 Thấp</span>':'<span class="badge b-yellow">🟡 TB</span>';
       return `<tr>
+        <td style="text-align:center"><input type="checkbox" aria-label="Chọn sản phẩm ${escapeHtml(p.name)}" ${selectedSet.has(p.id)?'checked':''} onchange="toggleProductSelection('${p.id}',this.checked)"></td>
         <td><b>${p.sku}</b></td><td>${escapeHtml(p.name)}</td><td>${cat?cat.name:''}</td>
         <td>${formatCurrency(p.sellPrice)}</td><td>${formatCurrency(p.costPrice)}</td>
         <td>${(p.platformFeePct||0).toFixed(1)}%</td>
@@ -1577,6 +1593,53 @@ function pageProducts(){
     }).join('')}</tbody>
   </table></div>`}
   `;
+}
+function toggleProductSelection(id,checked){
+  const selected = new Set(mainState.products.selected||[]);
+  if(checked) selected.add(id); else selected.delete(id);
+  mainState.products.selected = [...selected];
+  render();
+}
+function getVisibleProductIds(){
+  const s=mainState.products;
+  const metrics=computeProductMetrics(dateRangeForFull());
+  return metrics.filter(m=>{
+    if(s.category!=='all' && m.product.category!==s.category) return false;
+    if(s.search){ const q=s.search.toLowerCase(); if(!(m.product.name.toLowerCase().includes(q)||m.product.sku.toLowerCase().includes(q))) return false; }
+    return true;
+  }).map(m=>m.product.id);
+}
+function toggleProductSelectAll(checked){
+  const selected=new Set(mainState.products.selected||[]);
+  getVisibleProductIds().forEach(id=>checked?selected.add(id):selected.delete(id));
+  mainState.products.selected=[...selected];
+  render();
+}
+function clearProductSelection(){ mainState.products.selected=[]; render(); }
+function bulkUpdateProductStatus(){
+  const ids=mainState.products.selected||[];
+  if(!ids.length){ toast('Vui lòng chọn ít nhất một sản phẩm','warning'); return; }
+  const status=document.getElementById('bulkProductStatus')?.value;
+  if(!status){ toast('Vui lòng chọn trạng thái cần chuyển','warning'); return; }
+  state.products.forEach(p=>{ if(ids.includes(p.id)) p.status=status; });
+  mainState.products.selected=[];
+  saveData(); render();
+  toast(`Đã chuyển trạng thái ${ids.length} sản phẩm sang ${status==='active'?'Hoạt động':'Ngừng bán'}`,'success');
+}
+function bulkDeleteProducts(){
+  const ids=mainState.products.selected||[];
+  if(!ids.length){ toast('Vui lòng chọn ít nhất một sản phẩm','warning'); return; }
+  const selected=new Set(ids);
+  const inUseCount=state.orders.filter(o=>selected.has(o.productId)).length;
+  const msg=inUseCount
+    ? `Xóa ${ids.length} sản phẩm đã chọn? Có ${inUseCount} mục doanh thu đang liên kết với các sản phẩm này. Xóa vẫn tiếp tục?`
+    : `Xóa ${ids.length} sản phẩm đã chọn?`;
+  confirmAction(msg, ()=>{
+    state.products=state.products.filter(p=>!selected.has(p.id));
+    mainState.products.selected=[];
+    saveData(); render();
+    toast(`Đã xóa ${ids.length} sản phẩm`,'success');
+  });
 }
 function openProductModal(id){
   const editing = id? getProduct(id): null;
