@@ -1214,7 +1214,7 @@ afterRenderHooks.dashboard = function(){
 /* ========================================================
    PAGE: ORDERS
    ======================================================== */
-mainState.orders = {page:1, pageSize:10, search:'', status:'all', platformId:'all'};
+mainState.orders = {page:1, pageSize:10, search:'', status:'all', platformId:'all', selected:[]};
 const ORDER_SERVICE_SOURCE_ID = 'source_service';
 function orderSourceOptions(){
   return [...state.platforms.map(p=>({id:p.id,name:p.name})), {id:ORDER_SERVICE_SOURCE_ID,name:'Dịch vụ'}];
@@ -1225,12 +1225,16 @@ function getOrderSourceName(id){
 }
 function pageOrders(){
   const s = mainState.orders;
+  s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.orders.some(o=>o.id===id)) : [];
   const filters = {platformId:s.platformId==='all'?null:s.platformId, status:s.status, search:s.search};
   let list = filterOrders(state.orders, filters).sort((a,b)=> b.date.localeCompare(a.date));
   const total = list.length;
   const totalPages = Math.max(1,Math.ceil(total/s.pageSize));
   s.page = Math.min(s.page, totalPages);
   const pageItems = list.slice((s.page-1)*s.pageSize, s.page*s.pageSize);
+  const selectedSet = new Set(s.selected);
+  const selectedCount = s.selected.length;
+  const allPageSelected = pageItems.length>0 && pageItems.every(o=>selectedSet.has(o.id));
 
   return `
   <div class="page-title">Doanh thu thực tế</div>
@@ -1250,9 +1254,20 @@ function pageOrders(){
     <button class="btn" onclick="exportTableExcel('orders')">${icon('download',14)} Export</button>
     <button class="btn btn-primary" style="margin-left:auto" onclick="openOrderModal()">${icon('plus',14)} THÊM DOANH THU</button>
   </div>
+  ${selectedCount?`<div class="filter-row" style="padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--card);margin-top:-4px">
+    <b style="font-size:12.5px">Đã chọn ${selectedCount} phiếu</b>
+    <select class="select" id="bulkOrderStatus">
+      <option value="">Chuyển trạng thái...</option>
+      ${ORDER_STATUSES.map(st=>`<option value="${st}">${ORDER_STATUS_LABEL[st]}</option>`).join('')}
+    </select>
+    <button class="btn" onclick="bulkUpdateOrderStatus()">${icon('check',14)} Áp dụng</button>
+    <button class="btn btn-danger" onclick="bulkDeleteOrders()">${icon('trash',14)} Xóa đã chọn</button>
+    <button class="btn" onclick="clearOrderSelection()">Bỏ chọn</button>
+  </div>`:''}
   ${total===0? emptyState('Chưa có dữ liệu doanh thu nào','openOrderModal()','+ Thêm doanh thu') : `
   <div class="table-wrap"><table>
     <thead><tr>
+      <th style="width:42px;text-align:center"><input type="checkbox" aria-label="Chọn tất cả phiếu trên trang" ${allPageSelected?'checked':''} onchange="toggleOrderSelectAll(this.checked)"></th>
       <th>Mã đơn</th><th>Ngày</th><th>Nguồn</th><th>Khách hàng</th><th>Sản phẩm</th><th>SL</th>
       <th>Giá bán</th><th>Giảm giá</th><th>Doanh thu</th><th>Chi phí</th><th>Chi phí KOC</th><th>Giá vốn</th><th>Lợi nhuận</th><th>Trạng thái</th><th></th>
     </tr></thead>
@@ -1262,6 +1277,7 @@ function pageOrders(){
       const p = getProduct(o.productId);
       const sourceName = getOrderSourceName(o.platformId);
       return `<tr>
+        <td style="text-align:center"><input type="checkbox" aria-label="Chọn phiếu ${escapeHtml(o.code)}" ${selectedSet.has(o.id)?'checked':''} onchange="toggleOrderSelection('${o.id}',this.checked)"></td>
         <td><b>${o.code}</b></td>
         <td>${fmtDate(o.date)}</td>
         <td>${escapeHtml(sourceName)}</td>
@@ -1297,6 +1313,48 @@ function emptyState(msg,onclickFn,btnLabel){
   return `<div class="card empty-state">${icon('info',30)}<div style="margin-bottom:14px">${msg}</div><button class="btn btn-primary" onclick="${onclickFn}">${btnLabel}</button></div>`;
 }
 function setOrderFilter(key,val){ if(key!=='page') mainState.orders.page=1; mainState.orders[key]=val; render(); }
+function toggleOrderSelection(id,checked){
+  const selected = new Set(mainState.orders.selected||[]);
+  if(checked) selected.add(id); else selected.delete(id);
+  mainState.orders.selected = [...selected];
+  render();
+}
+function getCurrentOrderPageIds(){
+  const s=mainState.orders;
+  const filters={platformId:s.platformId==='all'?null:s.platformId,status:s.status,search:s.search};
+  const list=filterOrders(state.orders,filters).sort((a,b)=>b.date.localeCompare(a.date));
+  const totalPages=Math.max(1,Math.ceil(list.length/s.pageSize));
+  s.page=Math.min(s.page,totalPages);
+  return list.slice((s.page-1)*s.pageSize,s.page*s.pageSize).map(o=>o.id);
+}
+function toggleOrderSelectAll(checked){
+  const selected=new Set(mainState.orders.selected||[]);
+  getCurrentOrderPageIds().forEach(id=>checked?selected.add(id):selected.delete(id));
+  mainState.orders.selected=[...selected];
+  render();
+}
+function clearOrderSelection(){ mainState.orders.selected=[]; render(); }
+function bulkUpdateOrderStatus(){
+  const ids=mainState.orders.selected||[];
+  if(!ids.length){ toast('Vui lòng chọn ít nhất một phiếu','warning'); return; }
+  const status=document.getElementById('bulkOrderStatus')?.value;
+  if(!status){ toast('Vui lòng chọn trạng thái cần chuyển','warning'); return; }
+  state.orders.forEach(o=>{ if(ids.includes(o.id)) o.status=status; });
+  mainState.orders.selected=[];
+  saveData(); render();
+  toast(`Đã chuyển trạng thái ${ids.length} phiếu sang ${ORDER_STATUS_LABEL[status]}`,'success');
+}
+function bulkDeleteOrders(){
+  const ids=mainState.orders.selected||[];
+  if(!ids.length){ toast('Vui lòng chọn ít nhất một phiếu','warning'); return; }
+  confirmAction(`Xóa ${ids.length} mục doanh thu đã chọn? Dữ liệu liên quan sẽ được cập nhật lại.`, ()=>{
+    const selected=new Set(ids);
+    state.orders=state.orders.filter(o=>!selected.has(o.id));
+    mainState.orders.selected=[];
+    saveData(); render();
+    toast(`Đã xóa ${ids.length} mục doanh thu`,'success');
+  });
+}
 
 function openOrderModal(id){
   const editing = id? state.orders.find(o=>o.id===id) : null;
@@ -1942,9 +2000,10 @@ afterRenderHooks.koc_overview = function(){
 /* ========================================================
    PAGE: KOC LIST
    ======================================================== */
-mainState.koc_list = {group:'all', search:''};
+mainState.koc_list = {group:'all', search:'', selected:[]};
 function pageKocList(){
   const s=mainState.koc_list;
+  s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.kocs.some(k=>k.id===id)) : [];
   const filters = dateRangeForFull();
   const scored = computeKocScore(computeKocMetrics(filters));
   let list = scored.filter(m=>{
@@ -1952,6 +2011,9 @@ function pageKocList(){
     if(s.search){ const q=s.search.toLowerCase(); if(!(m.koc.name.toLowerCase().includes(q)||m.koc.username.toLowerCase().includes(q))) return false; }
     return true;
   });
+  const selectedSet=new Set(s.selected);
+  const selectedCount=s.selected.length;
+  const allVisibleSelected=list.length>0 && list.every(m=>selectedSet.has(m.koc.id));
   return `<div class="page-title">Danh sách KOC</div><div class="page-sub">Quản lý toàn bộ KOC / Affiliate hợp tác</div>
   <div class="filter-row">
     <input class="input" placeholder="Tìm KOC, username..." value="${escapeHtml(s.search)}" oninput="mainState.koc_list.search=this.value;render()">
@@ -1963,10 +2025,21 @@ function pageKocList(){
     <button class="btn" onclick="exportTableExcel('koc')">${icon('download',14)} Export</button>
     <button class="btn btn-primary" style="margin-left:auto" onclick="openKocModal()">${icon('plus',14)} Thêm KOC</button>
   </div>
+  ${selectedCount?`<div class="filter-row" style="padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--card);margin-top:-4px">
+    <b style="font-size:12.5px">Đã chọn ${selectedCount} KOC</b>
+    <select class="select" id="bulkKocStatus">
+      <option value="">Chuyển trạng thái...</option>
+      ${KOC_STATUSES.map(st=>`<option value="${st}">${KOC_STATUS_LABEL[st]}</option>`).join('')}
+    </select>
+    <button class="btn" onclick="bulkUpdateKocStatus()">${icon('check',14)} Áp dụng</button>
+    <button class="btn btn-danger" onclick="bulkDeleteKocs()">${icon('trash',14)} Xóa đã chọn</button>
+    <button class="btn" onclick="clearKocSelection()">Bỏ chọn</button>
+  </div>`:''}
   ${!list.length? emptyState('Chưa có KOC nào','openKocModal()','+ Thêm KOC'):`
-  <div class="table-wrap"><table><thead><tr><th>KOC</th><th>Nền tảng</th><th>Nhóm</th><th>Follower</th><th>Doanh thu</th><th>GMV tháng</th><th>Số video</th><th>Liên hệ</th><th>Score</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+  <div class="table-wrap"><table><thead><tr><th style="width:42px;text-align:center"><input type="checkbox" aria-label="Chọn tất cả KOC đang hiển thị" ${allVisibleSelected?'checked':''} onchange="toggleKocSelectAll(this.checked)"></th><th>KOC</th><th>Nền tảng</th><th>Nhóm</th><th>Follower</th><th>Doanh thu</th><th>GMV tháng</th><th>Số video</th><th>Liên hệ</th><th>Score</th><th>Trạng thái</th><th></th></tr></thead><tbody>
   ${list.map(m=>{const k=m.koc; const g=getKocGroup(k.groupId);
     return `<tr>
+      <td style="text-align:center"><input type="checkbox" aria-label="Chọn KOC ${escapeHtml(k.name)}" ${selectedSet.has(k.id)?'checked':''} onchange="toggleKocSelection('${k.id}',this.checked)"></td>
       <td><b>${escapeHtml(k.name)}</b><div class="muted" style="font-size:11px">${escapeHtml(k.username)}</div></td>
       <td>${escapeHtml(k.platform)}</td>
       <td><span class="badge b-purple">${g?g.name:'—'}</span></td>
@@ -1981,6 +2054,49 @@ function pageKocList(){
     </tr>`}).join('')}
   </tbody></table></div>`}
   `;
+}
+function toggleKocSelection(id,checked){
+  const selected=new Set(mainState.koc_list.selected||[]);
+  if(checked) selected.add(id); else selected.delete(id);
+  mainState.koc_list.selected=[...selected];
+  render();
+}
+function getVisibleKocIds(){
+  const s=mainState.koc_list;
+  const scored=computeKocScore(computeKocMetrics(dateRangeForFull()));
+  return scored.filter(m=>{
+    if(s.group!=='all' && m.koc.groupId!==s.group) return false;
+    if(s.search){ const q=s.search.toLowerCase(); if(!(m.koc.name.toLowerCase().includes(q)||m.koc.username.toLowerCase().includes(q))) return false; }
+    return true;
+  }).map(m=>m.koc.id);
+}
+function toggleKocSelectAll(checked){
+  const selected=new Set(mainState.koc_list.selected||[]);
+  getVisibleKocIds().forEach(id=>checked?selected.add(id):selected.delete(id));
+  mainState.koc_list.selected=[...selected];
+  render();
+}
+function clearKocSelection(){ mainState.koc_list.selected=[]; render(); }
+function bulkUpdateKocStatus(){
+  const ids=mainState.koc_list.selected||[];
+  if(!ids.length){ toast('Vui lòng chọn ít nhất một KOC','warning'); return; }
+  const status=document.getElementById('bulkKocStatus')?.value;
+  if(!status){ toast('Vui lòng chọn trạng thái cần chuyển','warning'); return; }
+  state.kocs.forEach(k=>{ if(ids.includes(k.id)){ k.status=status; k.dateLast=todayISO(); } });
+  mainState.koc_list.selected=[];
+  saveData(); render();
+  toast(`Đã chuyển trạng thái ${ids.length} KOC sang ${KOC_STATUS_LABEL[status]}`,'success');
+}
+function bulkDeleteKocs(){
+  const ids=mainState.koc_list.selected||[];
+  if(!ids.length){ toast('Vui lòng chọn ít nhất một KOC','warning'); return; }
+  confirmAction(`Xóa ${ids.length} KOC đã chọn? Dữ liệu doanh thu/booking liên quan sẽ giữ nguyên nhưng mất liên kết.`, ()=>{
+    const selected=new Set(ids);
+    state.kocs=state.kocs.filter(k=>!selected.has(k.id));
+    mainState.koc_list.selected=[];
+    saveData(); render();
+    toast(`Đã xóa ${ids.length} KOC`,'success');
+  });
 }
 function openKocModal(id){
   const editing = id? getKoc(id):null;
