@@ -1223,6 +1223,10 @@ function getOrderSourceName(id){
   if(id===ORDER_SERVICE_SOURCE_ID) return 'Dịch vụ';
   return getPlatform(id)?.name || '';
 }
+function calcActualRevenueProfit(order, computed){
+  const c = computed || calcOrder(order);
+  return c.netRevenue - c.platformFee - c.kocCommission - c.cogs;
+}
 function pageOrders(){
   const s = mainState.orders;
   s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.orders.some(o=>o.id===id)) : [];
@@ -1274,6 +1278,7 @@ function pageOrders(){
     <tbody>
     ${pageItems.map(o=>{
       const c = calcOrder(o);
+      const orderProfit = calcActualRevenueProfit(o, c);
       const p = getProduct(o.productId);
       const sourceName = getOrderSourceName(o.platformId);
       return `<tr>
@@ -1290,7 +1295,7 @@ function pageOrders(){
         <td>${formatCurrency(c.platformFee)}</td>
         <td>${formatCurrency(c.kocCommission)}</td>
         <td>${formatCurrency(c.cogs)}</td>
-        <td style="color:${c.netProfit>=0?'var(--green)':'var(--red)'}">${formatCurrency(c.netProfit)}</td>
+        <td style="color:${orderProfit>=0?'var(--green)':'var(--red)'}">${formatCurrency(orderProfit)}</td>
         <td><span class="badge b-${o.status}">${ORDER_STATUS_LABEL[o.status]}</span></td>
         <td><div class="row-actions">
           <button onclick="viewOrder('${o.id}')">${icon('eye',14)}</button>
@@ -1493,7 +1498,7 @@ function exportTableExcel(type){
   if(type==='orders'){
     filename='don-hang';
     rows = filterOrders(state.orders, {}).map(o=>{ const c=calcOrder(o); const p=getProduct(o.productId);
-      return {'Mã đơn':o.code,'Ngày':o.date,'Nguồn':getOrderSourceName(o.platformId),'Khách hàng':o.customer,'Sản phẩm':p?p.name:'','SKU':o.sku||'','Số lượng':o.qty,'Giá bán':o.sellPrice,'Giảm giá':o.discount,'Doanh thu':c.netRevenue,'Chi phí':c.platformFee,'Chi phí KOC':c.kocCommission,'Giá vốn':c.cogs,'Lợi nhuận':c.netProfit,'Trạng thái':ORDER_STATUS_LABEL[o.status]};
+      return {'Mã đơn':o.code,'Ngày':o.date,'Nguồn':getOrderSourceName(o.platformId),'Khách hàng':o.customer,'Sản phẩm':p?p.name:'','SKU':o.sku||'','Số lượng':o.qty,'Giá bán':o.sellPrice,'Giảm giá':o.discount,'Doanh thu':c.netRevenue,'Chi phí':c.platformFee,'Chi phí KOC':c.kocCommission,'Giá vốn':c.cogs,'Lợi nhuận':calcActualRevenueProfit(o,c),'Trạng thái':ORDER_STATUS_LABEL[o.status]};
     });
   } else if(type==='products'){
     filename='san-pham';
