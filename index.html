@@ -562,7 +562,7 @@ function generateDemoData(){
     state.products.push({
       id:uid('prod'), sku:'SKU'+String(i+1).padStart(3,'0'), name:productNames[i]||('Sản phẩm '+(i+1)),
       category:pick(cats).id, platformId:pick(platforms).id, importPrice, sellPrice:sell, costPrice:cost,
-      platformFeePct: +(rand(20,80)/10).toFixed(1), platformManagementFee: rand(1,15)*1000, status:'active'
+      platformFeePct: +(rand(20,80)/10).toFixed(1), platformManagementFee: rand(1,15)*1000, adsCostPerUnit:0, status:'active'
     });
   }
   state.categories = cats;
@@ -1502,7 +1502,7 @@ function exportTableExcel(type){
     });
   } else if(type==='products'){
     filename='san-pham';
-    rows = computeProductMetrics({}).map(m=>({'SKU':m.product.sku,'Tên sản phẩm':m.product.name,'Phí sàn (%)':m.product.platformFeePct,'Phí quản lý sàn':m.product.platformManagementFee,'Doanh thu':m.revenue,'Giá vốn':m.cogs,'Lợi nhuận':m.profit,'Biên LN %':m.margin.toFixed(1)}));
+    rows = state.products.map(p=>{ const est=calcProductUnitEstimate(p); return {'SKU':p.sku,'Tên sản phẩm':p.name,'Giá bán':p.sellPrice,'Giá vốn':p.costPrice,'Phí sàn (%)':p.platformFeePct,'Phí quản lý sàn':p.platformManagementFee,'Phí Ads':p.adsCostPerUnit||0,'Lợi nhuận ước tính / SP':est.profit,'Biên LN %':est.margin.toFixed(1)}; });
   } else if(type==='koc'){
     filename='koc';
     rows = computeKocMetrics({}).map(m=>({'KOC':m.koc.name,'Doanh thu':m.revenue,'Đơn':m.orderCount,'Hoa hồng':m.commission,'Tổng chi phí':m.totalCost,'Lợi nhuận':m.profit,'ROAS':m.roas.toFixed(2),'ROI %':m.roi.toFixed(1)}));
@@ -1520,7 +1520,7 @@ function exportTableExcel(type){
 function downloadTemplate(type){
   let rows=[], filename='template';
   if(type==='orders'){ filename='template-don-hang'; rows=[{'Mã đơn':'ORD0001','Ngày':todayISO(),'Nguồn':'TikTok Shop','Khách hàng':'Nguyễn Văn A','SKU':state.products[0]?state.products[0].sku:'','Số lượng':1,'Giá bán':100000,'Giảm giá':0,'Trạng thái':'success'}]; }
-  else if(type==='products'){ filename='template-san-pham'; rows=[{'SKU':'SKU999','Tên sản phẩm':'Sản phẩm mẫu','Danh mục':state.categories[0]?.name,'Giá nhập':50000,'Giá bán':100000,'Giá vốn':55000,'Phí sàn (%)':5,'Phí quản lý sàn':2000}]; }
+  else if(type==='products'){ filename='template-san-pham'; rows=[{'SKU':'SKU999','Tên sản phẩm':'Sản phẩm mẫu','Danh mục':state.categories[0]?.name,'Giá nhập':50000,'Giá bán':100000,'Giá vốn':55000,'Phí sàn (%)':5,'Phí quản lý sàn':2000,'Phí Ads':0}]; }
   else if(type==='kocs'){ filename='template-koc'; rows=[{'Tên':'KOC mẫu','Username':'@kocmau','Nền tảng':'TikTok','Group':'KOC A','Follower':10000}]; }
   else if(type==='expenses'){ filename='template-chi-phi'; rows=[{'Ngày':todayISO(),'Loại':'other','Số tiền':1000000,'Ghi chú':'Ghi chú mẫu'}]; }
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -1533,6 +1533,16 @@ function downloadTemplate(type){
    PAGE: PRODUCTS
    ======================================================== */
 mainState.products = {search:'', category:'all', selected:[]};
+function calcProductUnitEstimate(p){
+  const sellPrice = Number(p.sellPrice)||0;
+  const costPrice = Number(p.costPrice)||0;
+  const platformFee = sellPrice * (Number(p.platformFeePct)||0) / 100;
+  const managementFee = Number(p.platformManagementFee)||0;
+  const adsCost = Number(p.adsCostPerUnit)||0;
+  const profit = sellPrice - costPrice - platformFee - managementFee - adsCost;
+  const margin = safeDiv(profit, sellPrice) * 100;
+  return {platformFee, adsCost, profit, margin};
+}
 function pageProducts(){
   const s = mainState.products;
   s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.products.some(p=>p.id===id)) : [];
@@ -1574,19 +1584,20 @@ function pageProducts(){
   </div>`:''}
   ${!list.length? emptyState('Chưa có sản phẩm nào','openProductModal()','+ Thêm sản phẩm') : `
   <div class="table-wrap"><table>
-    <thead><tr><th style="width:42px;text-align:center"><input type="checkbox" aria-label="Chọn tất cả sản phẩm đang hiển thị" ${allVisibleSelected?'checked':''} onchange="toggleProductSelectAll(this.checked)"></th><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
+    <thead><tr><th style="width:42px;text-align:center"><input type="checkbox" aria-label="Chọn tất cả sản phẩm đang hiển thị" ${allVisibleSelected?'checked':''} onchange="toggleProductSelectAll(this.checked)"></th><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Phí Ads</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>${list.map(m=>{
       const p=m.product; const cat=state.categories.find(c=>c.id===p.category);
-      const marginTag = m.margin>=state.settings.productMarginThresholds.high? '<span class="badge b-green">🟢 Cao</span>' : m.margin<=state.settings.productMarginThresholds.low? '<span class="badge b-red">🔴 Thấp</span>':'<span class="badge b-yellow">🟡 TB</span>';
+      const est = calcProductUnitEstimate(p);
+      const marginTag = est.margin>=state.settings.productMarginThresholds.high? '<span class="badge b-green">🟢 Cao</span>' : est.margin<=state.settings.productMarginThresholds.low? '<span class="badge b-red">🔴 Thấp</span>':'<span class="badge b-yellow">🟡 TB</span>';
       return `<tr>
         <td style="text-align:center"><input type="checkbox" aria-label="Chọn sản phẩm ${escapeHtml(p.name)}" ${selectedSet.has(p.id)?'checked':''} onchange="toggleProductSelection('${p.id}',this.checked)"></td>
         <td><b>${p.sku}</b></td><td>${escapeHtml(p.name)}</td><td>${cat?cat.name:''}</td>
         <td>${formatCurrency(p.sellPrice)}</td><td>${formatCurrency(p.costPrice)}</td>
         <td>${(p.platformFeePct||0).toFixed(1)}%</td>
         <td>${formatCurrency(p.platformManagementFee||0)}</td>
-        <td>${formatCurrency(m.revenue)}</td>
-        <td style="color:${m.profit>=0?'var(--green)':'var(--red)'}">${formatCurrency(m.profit)}</td>
-        <td>${formatPct(m.margin)} ${marginTag}</td>
+        <td>${formatCurrency(p.adsCostPerUnit||0)}</td>
+        <td style="color:${est.profit>=0?'var(--green)':'var(--red)'}">${formatCurrency(est.profit)}</td>
+        <td>${formatPct(est.margin)} ${marginTag}</td>
         <td><span class="badge ${p.status==='active'?'b-green':'b-red'}">${p.status==='active'?'Hoạt động':'Ngừng bán'}</span></td>
         <td><div class="row-actions"><button onclick="openProductModal('${p.id}')">${icon('edit',14)}</button><button onclick="deleteProduct('${p.id}')">${icon('trash',14)}</button></div></td>
       </tr>`;
@@ -1643,7 +1654,7 @@ function bulkDeleteProducts(){
 }
 function openProductModal(id){
   const editing = id? getProduct(id): null;
-  const p = editing || {id:null, sku:'SKU'+String(state.products.length+1).padStart(3,'0'), name:'', category:state.categories[0]?.id||'', platformId:state.platforms[0].id, importPrice:0, sellPrice:0, costPrice:0, platformFeePct:0, platformManagementFee:0, status:'active'};
+  const p = editing || {id:null, sku:'SKU'+String(state.products.length+1).padStart(3,'0'), name:'', category:state.categories[0]?.id||'', platformId:state.platforms[0].id, importPrice:0, sellPrice:0, costPrice:0, platformFeePct:0, platformManagementFee:0, adsCostPerUnit:0, status:'active'};
   openModal({title:editing?'Sửa sản phẩm':'Thêm sản phẩm', bodyHtml:`
     <form id="productForm">
       <div class="form-grid2">
@@ -1656,6 +1667,7 @@ function openProductModal(id){
         <div class="form-row"><label>Giá bán *</label><input class="input" type="number" min="0" name="sellPrice" value="${p.sellPrice}" required></div>
         <div class="form-row"><label>Phí sàn (%)</label><input class="input" type="number" min="0" max="100" step="0.1" name="platformFeePct" value="${p.platformFeePct||0}"></div>
         <div class="form-row"><label>Phí quản lý của sàn (đ/sản phẩm)</label><input class="input" type="number" min="0" name="platformManagementFee" value="${p.platformManagementFee||0}"></div>
+        <div class="form-row"><label>Phí Ads (đ/sản phẩm)</label><input class="input" type="number" min="0" name="adsCostPerUnit" value="${p.adsCostPerUnit||0}"></div>
         <div class="form-row"><label>Trạng thái</label><select class="select" name="status"><option value="active" ${p.status==='active'?'selected':''}>Hoạt động</option><option value="inactive" ${p.status==='inactive'?'selected':''}>Ngừng bán</option></select></div>
       </div>
     </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitProductForm('${p.id||''}')">${icon('save',14)} Lưu</button>`});
@@ -1667,7 +1679,7 @@ function submitProductForm(id){
   if(!id && state.products.some(p=>p.sku===sku)){ toast('SKU đã tồn tại','error'); return; }
   const platformFeePct = parseFloat(fd.get('platformFeePct')||0);
   if(platformFeePct<0||platformFeePct>100){ toast('Phí sàn phải trong khoảng 0-100%','error'); return; }
-  const data = {sku,name,category:fd.get('category'),platformId:fd.get('platformId'),importPrice:parseFloat(fd.get('importPrice')||0),costPrice:parseFloat(fd.get('costPrice')||0),sellPrice:parseFloat(fd.get('sellPrice')||0),platformFeePct,platformManagementFee:parseFloat(fd.get('platformManagementFee')||0),status:fd.get('status')};
+  const data = {sku,name,category:fd.get('category'),platformId:fd.get('platformId'),importPrice:parseFloat(fd.get('importPrice')||0),costPrice:parseFloat(fd.get('costPrice')||0),sellPrice:parseFloat(fd.get('sellPrice')||0),platformFeePct,platformManagementFee:parseFloat(fd.get('platformManagementFee')||0),adsCostPerUnit:parseFloat(fd.get('adsCostPerUnit')||0),status:fd.get('status')};
   if(data.costPrice<0||data.sellPrice<0){ toast('Giá không được âm','error'); return; }
   if(id){
     const p=getProduct(id); Object.assign(p,data);
@@ -1696,7 +1708,7 @@ function handleImportProducts(file){
       rows.forEach(r=>{
         const sku=String(r.SKU||r.sku||'').trim(); if(!sku) return;
         if(state.products.some(p=>p.sku===sku)) return;
-        state.products.push({id:uid('prod'),sku,name:String(r['Tên sản phẩm']||r.name||sku),category:state.categories[0]?.id,platformId:state.platforms[0].id,importPrice:parseFloat(r['Giá nhập']||0),costPrice:parseFloat(r['Giá vốn']||r.costPrice||0),sellPrice:parseFloat(r['Giá bán']||r.sellPrice||0),platformFeePct:parseFloat(r['Phí sàn (%)']||r.platformFeePct||0),platformManagementFee:parseFloat(r['Phí quản lý sàn']||r.platformManagementFee||0),status:'active'});
+        state.products.push({id:uid('prod'),sku,name:String(r['Tên sản phẩm']||r.name||sku),category:state.categories[0]?.id,platformId:state.platforms[0].id,importPrice:parseFloat(r['Giá nhập']||0),costPrice:parseFloat(r['Giá vốn']||r.costPrice||0),sellPrice:parseFloat(r['Giá bán']||r.sellPrice||0),platformFeePct:parseFloat(r['Phí sàn (%)']||r.platformFeePct||0),platformManagementFee:parseFloat(r['Phí quản lý sàn']||r.platformManagementFee||0),adsCostPerUnit:parseFloat(r['Phí Ads']||r.adsCostPerUnit||0),status:'active'});
         added++;
       });
       saveData(); render();
