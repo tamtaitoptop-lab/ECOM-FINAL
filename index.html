@@ -1215,6 +1215,14 @@ afterRenderHooks.dashboard = function(){
    PAGE: ORDERS
    ======================================================== */
 mainState.orders = {page:1, pageSize:10, search:'', status:'all', platformId:'all'};
+const ORDER_SERVICE_SOURCE_ID = 'source_service';
+function orderSourceOptions(){
+  return [...state.platforms.map(p=>({id:p.id,name:p.name})), {id:ORDER_SERVICE_SOURCE_ID,name:'Dịch vụ'}];
+}
+function getOrderSourceName(id){
+  if(id===ORDER_SERVICE_SOURCE_ID) return 'Dịch vụ';
+  return getPlatform(id)?.name || '';
+}
 function pageOrders(){
   const s = mainState.orders;
   const filters = {platformId:s.platformId==='all'?null:s.platformId, status:s.status, search:s.search};
@@ -1226,7 +1234,7 @@ function pageOrders(){
 
   return `
   <div class="page-title">Doanh thu thực tế</div>
-  <div class="page-sub">Nhập liệu doanh thu thực tế phát sinh trên các sàn thương mại điện tử</div>
+  <div class="page-sub">Nhập liệu doanh thu thực tế phát sinh từ các nguồn kinh doanh</div>
   <div class="filter-row">
     <input class="input" placeholder="Tìm mã đơn, khách hàng, SKU..." value="${escapeHtml(s.search)}" oninput="setOrderFilter('search',this.value)" style="min-width:220px">
     <select class="select" onchange="setOrderFilter('status',this.value)">
@@ -1234,8 +1242,8 @@ function pageOrders(){
       ${ORDER_STATUSES.map(st=>`<option value="${st}" ${s.status===st?'selected':''}>${ORDER_STATUS_LABEL[st]}</option>`).join('')}
     </select>
     <select class="select" onchange="setOrderFilter('platformId',this.value)">
-      <option value="all">Tất cả sàn</option>
-      ${state.platforms.map(p=>`<option value="${p.id}" ${s.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}
+      <option value="all">Tất cả nguồn</option>
+      ${orderSourceOptions().map(p=>`<option value="${p.id}" ${s.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}
     </select>
     <button class="btn" onclick="document.getElementById('importOrderFile').click()">${icon('upload',14)} Import</button>
     <input type="file" id="importOrderFile" accept=".csv,.xlsx" class="hidden" onchange="handleImportOrders(this.files[0])">
@@ -1245,18 +1253,18 @@ function pageOrders(){
   ${total===0? emptyState('Chưa có dữ liệu doanh thu nào','openOrderModal()','+ Thêm doanh thu') : `
   <div class="table-wrap"><table>
     <thead><tr>
-      <th>Mã đơn</th><th>Ngày</th><th>Sàn</th><th>Khách hàng</th><th>Sản phẩm</th><th>SL</th>
-      <th>Giá bán</th><th>Giảm giá</th><th>Doanh thu</th><th>Phí sàn</th><th>Hoa hồng KOC</th><th>Giá vốn</th><th>Lợi nhuận</th><th>Trạng thái</th><th></th>
+      <th>Mã đơn</th><th>Ngày</th><th>Nguồn</th><th>Khách hàng</th><th>Sản phẩm</th><th>SL</th>
+      <th>Giá bán</th><th>Giảm giá</th><th>Doanh thu</th><th>Chi phí</th><th>Chi phí KOC</th><th>Giá vốn</th><th>Lợi nhuận</th><th>Trạng thái</th><th></th>
     </tr></thead>
     <tbody>
     ${pageItems.map(o=>{
       const c = calcOrder(o);
       const p = getProduct(o.productId);
-      const pl = getPlatform(o.platformId);
+      const sourceName = getOrderSourceName(o.platformId);
       return `<tr>
         <td><b>${o.code}</b></td>
         <td>${fmtDate(o.date)}</td>
-        <td>${pl?pl.name:''}</td>
+        <td>${escapeHtml(sourceName)}</td>
         <td>${escapeHtml(o.customer)}</td>
         <td>${p?escapeHtml(p.name):'—'}</td>
         <td>${o.qty}</td>
@@ -1292,8 +1300,7 @@ function setOrderFilter(key,val){ if(key!=='page') mainState.orders.page=1; main
 
 function openOrderModal(id){
   const editing = id? state.orders.find(o=>o.id===id) : null;
-  const o = editing || {id:null, code:'ORD'+String(20000+state.orders.length), date:todayISO(), platformId:state.platforms[0].id, customer:'', productId:state.products[0]?state.products[0].id:'', qty:1, sellPrice: state.products[0]?state.products[0].sellPrice:0, discount:0, shippingFeeSeller:0, kocId:'', campaignId:'', adsCostAllocated:0, status:'pending', refundReason:''};
-  if(!state.products.length){ toast('Vui lòng thêm sản phẩm trước khi tạo doanh thu','warning'); return; }
+  const o = editing || {id:null, code:'ORD'+String(20000+state.orders.length), date:todayISO(), platformId:state.platforms[0].id, customer:'', productId:'', qty:1, sellPrice:0, discount:0, shippingFeeSeller:0, kocId:'', campaignId:'', adsCostAllocated:0, status:'pending', refundReason:''};
   openModal({
     title: editing? 'Sửa doanh thu':'Thêm doanh thu thực tế', wide:true,
     bodyHtml:`
@@ -1301,9 +1308,9 @@ function openOrderModal(id){
       <div class="form-grid2">
         <div class="form-row"><label>Mã đơn *</label><input class="input" name="code" value="${escapeHtml(o.code)}" required></div>
         <div class="form-row"><label>Ngày *</label><input class="input" type="date" name="date" value="${o.date}" required></div>
-        <div class="form-row"><label>Sàn *</label><select class="select" name="platformId">${state.platforms.map(p=>`<option value="${p.id}" ${o.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Nguồn *</label><select class="select" name="platformId">${orderSourceOptions().map(p=>`<option value="${p.id}" ${o.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
         <div class="form-row"><label>Khách hàng</label><input class="input" name="customer" value="${escapeHtml(o.customer)}"></div>
-        <div class="form-row"><label>Sản phẩm *</label><select class="select" name="productId" onchange="onOrderProductChange(this)">${state.products.map(p=>`<option value="${p.id}" data-price="${p.sellPrice}" ${o.productId===p.id?'selected':''}>${p.sku} - ${p.name}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Sản phẩm</label><select class="select" name="productId" onchange="onOrderProductChange(this)"><option value="" data-price="0" ${!o.productId?'selected':''}>— Để trống —</option>${state.products.map(p=>`<option value="${p.id}" data-price="${p.sellPrice}" ${o.productId===p.id?'selected':''}>${p.sku} - ${p.name}</option>`).join('')}</select></div>
         <div class="form-row"><label>Số lượng *</label><input class="input" type="number" min="1" name="qty" value="${o.qty}" required></div>
         <div class="form-row"><label>Giá bán *</label><input class="input" type="number" min="0" name="sellPrice" value="${o.sellPrice}" required></div>
         <div class="form-row"><label>Giảm giá</label><input class="input" type="number" min="0" name="discount" value="${o.discount||0}"></div>
@@ -1337,9 +1344,11 @@ function submitOrderForm(id){
   if(qty<=0){ toast('Số lượng phải lớn hơn 0','error'); return; }
   if(sellPrice<0 || discount<0){ toast('Giá trị không được âm','error'); return; }
   if(discount > sellPrice*qty){ toast('Giảm giá không được lớn hơn tổng giá bán','error'); return; }
+  const productId = fd.get('productId') || null;
+  const product = productId ? getProduct(productId) : null;
   const data = {
     code, date: fd.get('date'), platformId: fd.get('platformId'), customer: fd.get('customer').trim(),
-    productId: fd.get('productId'), sku: getProduct(fd.get('productId')).sku, qty, sellPrice, discount,
+    productId, sku: product ? product.sku : '', qty, sellPrice, discount,
     shippingFeeSeller: parseFloat(fd.get('shippingFeeSeller')||0), adsCostAllocated: parseFloat(fd.get('adsCostAllocated')||0),
     kocId: fd.get('kocId')||null, campaignId: fd.get('campaignId')||null, status: fd.get('status'),
     refundReason: fd.get('refundReason')||'',
@@ -1366,19 +1375,19 @@ function deleteOrder(id){
 }
 function viewOrder(id){
   const o = state.orders.find(x=>x.id===id); if(!o) return;
-  const c = calcOrder(o); const p=getProduct(o.productId); const pl=getPlatform(o.platformId); const koc=getKoc(o.kocId);
+  const c = calcOrder(o); const p=getProduct(o.productId); const sourceName=getOrderSourceName(o.platformId); const koc=getKoc(o.kocId);
   openModal({title:'Chi tiết đơn '+o.code, bodyHtml:`
-    <div class="stat-line"><span class="muted">Sàn</span><b>${pl?pl.name:''}</b></div>
+    <div class="stat-line"><span class="muted">Nguồn</span><b>${escapeHtml(sourceName)}</b></div>
     <div class="stat-line"><span class="muted">Khách hàng</span><b>${escapeHtml(o.customer)}</b></div>
     <div class="stat-line"><span class="muted">Sản phẩm</span><b>${p?escapeHtml(p.name):''}</b></div>
     <div class="stat-line"><span class="muted">KOC</span><b>${koc?escapeHtml(koc.name):'—'}</b></div>
     <hr class="sep">
     <div class="stat-line"><span class="muted">Doanh thu gộp</span><b>${formatCurrency(c.grossRevenue)}</b></div>
     <div class="stat-line"><span class="muted">Doanh thu sau giảm</span><b>${formatCurrency(c.netRevenue)}</b></div>
-    <div class="stat-line"><span class="muted">Phí sàn</span><b>${formatCurrency(c.platformFee)}</b></div>
+    <div class="stat-line"><span class="muted">Chi phí</span><b>${formatCurrency(c.platformFee)}</b></div>
     <div class="stat-line"><span class="muted">Phí thanh toán</span><b>${formatCurrency(c.paymentFee)}</b></div>
     <div class="stat-line"><span class="muted">Phí vận chuyển</span><b>${formatCurrency(c.shippingFee)}</b></div>
-    <div class="stat-line"><span class="muted">Hoa hồng KOC</span><b>${formatCurrency(c.kocCommission)}</b></div>
+    <div class="stat-line"><span class="muted">Chi phí KOC</span><b>${formatCurrency(c.kocCommission)}</b></div>
     <div class="stat-line"><span class="muted">Chi phí quảng cáo</span><b>${formatCurrency(c.adsCost)}</b></div>
     <div class="stat-line"><span class="muted">Doanh thu thực nhận</span><b>${formatCurrency(c.netReceived)}</b></div>
     <div class="stat-line"><span class="muted">Giá vốn</span><b>${formatCurrency(c.cogs)}</b></div>
@@ -1397,13 +1406,17 @@ function handleImportOrders(file){
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
       let added=0, errors=0;
       rows.forEach(r=>{
-        const product = state.products.find(p=>p.sku===String(r.SKU||r.sku||'').trim());
-        const platform = state.platforms.find(p=>p.name===String(r.Sàn||r.platform||'').trim()) || state.platforms[0];
-        if(!product || !r['Mã đơn'] && !r.code){ errors++; return; }
+        const sku = String(r.SKU||r.sku||'').trim();
+        const product = sku ? state.products.find(p=>p.sku===sku) : null;
+        const sourceText = String(r['Nguồn']||r.Sàn||r.platform||'').trim();
+        const source = sourceText==='Dịch vụ'
+          ? {id:ORDER_SERVICE_SOURCE_ID}
+          : (state.platforms.find(p=>p.name===sourceText) || state.platforms[0]);
+        if((sku && !product) || (!r['Mã đơn'] && !r.code)){ errors++; return; }
         state.orders.push({
-          id:uid('ord'), code:String(r['Mã đơn']||r.code), date: r['Ngày']||r.date||todayISO(), platformId:platform.id,
-          customer:String(r['Khách hàng']||r.customer||''), productId:product.id, sku:product.sku,
-          qty: parseInt(r['Số lượng']||r.qty||1), sellPrice: parseFloat(r['Giá bán']||r.sellPrice||product.sellPrice),
+          id:uid('ord'), code:String(r['Mã đơn']||r.code), date: r['Ngày']||r.date||todayISO(), platformId:source.id,
+          customer:String(r['Khách hàng']||r.customer||''), productId:product?product.id:null, sku:product?product.sku:'',
+          qty: parseInt(r['Số lượng']||r.qty||1), sellPrice: parseFloat(r['Giá bán']||r.sellPrice||(product?product.sellPrice:0)),
           discount: parseFloat(r['Giảm giá']||r.discount||0), shippingFeeSeller:0, adsCostAllocated:0,
           kocId:null, campaignId:null, status: r['Trạng thái']||r.status||'success', refundReason:'',
         });
@@ -1421,8 +1434,8 @@ function exportTableExcel(type){
   let rows=[], filename='export';
   if(type==='orders'){
     filename='don-hang';
-    rows = filterOrders(state.orders, {}).map(o=>{ const c=calcOrder(o); const p=getProduct(o.productId); const pl=getPlatform(o.platformId);
-      return {'Mã đơn':o.code,'Ngày':o.date,'Sàn':pl?pl.name:'','Khách hàng':o.customer,'Sản phẩm':p?p.name:'','SKU':o.sku,'Số lượng':o.qty,'Giá bán':o.sellPrice,'Giảm giá':o.discount,'Doanh thu':c.netRevenue,'Phí sàn':c.platformFee,'Hoa hồng KOC':c.kocCommission,'Giá vốn':c.cogs,'Lợi nhuận':c.netProfit,'Trạng thái':ORDER_STATUS_LABEL[o.status]};
+    rows = filterOrders(state.orders, {}).map(o=>{ const c=calcOrder(o); const p=getProduct(o.productId);
+      return {'Mã đơn':o.code,'Ngày':o.date,'Nguồn':getOrderSourceName(o.platformId),'Khách hàng':o.customer,'Sản phẩm':p?p.name:'','SKU':o.sku||'','Số lượng':o.qty,'Giá bán':o.sellPrice,'Giảm giá':o.discount,'Doanh thu':c.netRevenue,'Chi phí':c.platformFee,'Chi phí KOC':c.kocCommission,'Giá vốn':c.cogs,'Lợi nhuận':c.netProfit,'Trạng thái':ORDER_STATUS_LABEL[o.status]};
     });
   } else if(type==='products'){
     filename='san-pham';
@@ -1443,7 +1456,7 @@ function exportTableExcel(type){
 }
 function downloadTemplate(type){
   let rows=[], filename='template';
-  if(type==='orders'){ filename='template-don-hang'; rows=[{'Mã đơn':'ORD0001','Ngày':todayISO(),'Sàn':'TikTok Shop','Khách hàng':'Nguyễn Văn A','SKU':state.products[0]?state.products[0].sku:'SKU001','Số lượng':1,'Giá bán':100000,'Giảm giá':0,'Trạng thái':'success'}]; }
+  if(type==='orders'){ filename='template-don-hang'; rows=[{'Mã đơn':'ORD0001','Ngày':todayISO(),'Nguồn':'TikTok Shop','Khách hàng':'Nguyễn Văn A','SKU':state.products[0]?state.products[0].sku:'','Số lượng':1,'Giá bán':100000,'Giảm giá':0,'Trạng thái':'success'}]; }
   else if(type==='products'){ filename='template-san-pham'; rows=[{'SKU':'SKU999','Tên sản phẩm':'Sản phẩm mẫu','Danh mục':state.categories[0]?.name,'Giá nhập':50000,'Giá bán':100000,'Giá vốn':55000,'Phí sàn (%)':5,'Phí quản lý sàn':2000}]; }
   else if(type==='kocs'){ filename='template-koc'; rows=[{'Tên':'KOC mẫu','Username':'@kocmau','Nền tảng':'TikTok','Group':'KOC A','Follower':10000}]; }
   else if(type==='expenses'){ filename='template-chi-phi'; rows=[{'Ngày':todayISO(),'Loại':'other','Số tiền':1000000,'Ghi chú':'Ghi chú mẫu'}]; }
