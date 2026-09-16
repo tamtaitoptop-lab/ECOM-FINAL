@@ -451,9 +451,9 @@ const DEFAULT_SUPABASE_CONFIG = {
 function getSupabaseConfig(){
   try{
     const raw = localStorage.getItem(SUPABASE_CFG_KEY);
-    return raw ? {...DEFAULT_SUPABASE_CONFIG, ...JSON.parse(raw)} : null;
+    return raw ? {...DEFAULT_SUPABASE_CONFIG, ...JSON.parse(raw)} : {...DEFAULT_SUPABASE_CONFIG};
   }catch(e){
-    return null;
+    return {...DEFAULT_SUPABASE_CONFIG};
   }
 }
 function setSupabaseConfig(cfg){
