@@ -246,6 +246,7 @@ hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
 
 .map-scroll{overflow:auto;height:620px;border:1px solid var(--border);border-radius:12px;background:radial-gradient(#303453 1px,transparent 1px);background-size:20px 20px}.map-surface{position:relative;width:2600px;height:2000px}.map-edges{position:absolute;inset:0;pointer-events:none}.map-edges>path{stroke:#a78bfa;stroke-width:4;fill:none;pointer-events:stroke;cursor:pointer}.map-edges>path:hover{stroke:#22d3ee;stroke-width:7}.map-node{position:absolute;width:270px;height:160px;background:#151b34;border:1px solid #675094;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px #0005}.map-drag{background:#ffffff08;border:0;color:var(--muted);cursor:grab;border-radius:6px;touch-action:none;text-align:left;padding:7px}.map-title{border:0;background:none;color:var(--text);font:inherit;font-weight:700;text-align:left;cursor:pointer;padding:0;overflow:hidden}.map-title:hover{color:var(--cyan)}.map-node>.muted{font-size:12px;overflow:hidden}.map-port{position:absolute;right:-13px;top:66px;width:26px;height:26px;border:2px solid var(--cyan);border-radius:50%;background:#163342;color:var(--cyan);cursor:crosshair;touch-action:none;padding:0}.workflow-edit label{display:flex;flex-direction:column;gap:6px;margin:14px 0}.workflow-edit .form-grid2{gap:12px}.workflow-handle{cursor:grab;touch-action:none}.workflow-edit.drop-target{outline:3px solid var(--cyan)}.workflow-edit textarea{resize:vertical}.map-surface:focus-visible{outline:2px solid var(--cyan)}
 
+.auth-screen{min-height:100vh;display:grid;place-items:center;padding:20px}.auth-card{width:min(100%,500px);padding:26px}.auth-card form{display:grid;gap:16px}.auth-card details{margin-top:24px}.auth-card summary{cursor:pointer}.auth-card details .form-row{margin-top:12px}.auth-card .page-title{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -377,11 +378,6 @@ function defaultState(){
   };
 }
 
-function saveData(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-  catch(e){ toast('Lỗi lưu dữ liệu: '+e.message,'error'); }
-  scheduleSupabasePush();
-}
 function ensureFinanceState(){
   ensureOrganizationState();
   if(!Array.isArray(state.cashAccounts)) state.cashAccounts=[];
@@ -389,13 +385,6 @@ function ensureFinanceState(){
   if(!Array.isArray(state.loans)) state.loans=[];
   if(!Array.isArray(state.businessPlans)) state.businessPlans=[];
   state.businessPlans.forEach(p=>{if(!Array.isArray(p.productPlans))p.productPlans=[];if(!Array.isArray(p.tasks))p.tasks=[];});
-}
-function loadData(){
-  try{
-    const raw = localStorage.getItem(LS_KEY);
-    if(raw){ state = JSON.parse(raw); ensureFinanceState(); return true; }
-  }catch(e){ console.error(e); }
-  return false;
 }
 function resetData(){
   state = defaultState();
@@ -419,11 +408,12 @@ function importBackup(file){
   reader.onload = (e)=>{
     try{
       const data = JSON.parse(e.target.result);
+      if(!isAdmin()){throw new Error('Chỉ quản trị viên được nhập bản sao lưu');}
       if(!data.orders || !data.products){ throw new Error('File không đúng định dạng'); }
       state = Object.assign(defaultState(), data);
       ensureFinanceState();
       saveData();
-      toast('Khôi phục dữ liệu thành công','success');
+      toast('Đã nhận bản sao lưu; vui lòng chờ trạng thái Đã lưu lên Supabase trước khi tải lại trang','warning');
       navigate(currentRoute);
     }catch(err){ toast('Lỗi restore: '+err.message,'error'); }
   };
@@ -434,7 +424,7 @@ function importBackup(file){
    ECOM DIGITAL lưu toàn bộ `state` dưới dạng 1 bản ghi JSONB duy nhất
    trong bảng `ecom_digital_data`, khóa chính là "Mã cửa hàng" (storeId).
    Nhờ vậy không cần đổi cấu trúc dữ liệu hiện có, chỉ cần đồng bộ
-   JSON qua lại giữa localStorage (offline-first) và Supabase (cloud).
+   Dữ liệu kinh doanh được truy cập qua các hàm Supabase có kiểm tra quyền.
 ==================================================== */
 const SUPABASE_CFG_KEY = 'ecomDigitalSupabaseConfig';
 const SUPABASE_TABLE = 'ecom_digital_data';
@@ -462,12 +452,6 @@ function getSupabaseConfig(){
 function setSupabaseConfig(cfg){
   localStorage.setItem(SUPABASE_CFG_KEY, JSON.stringify(cfg));
 }
-function clearSupabaseConfig(){
-  localStorage.removeItem(SUPABASE_CFG_KEY);
-  supabaseClient = null;
-  supabaseStatus = 'disconnected';
-  supabaseStatusMsg = '';
-}
 function initSupabaseClient(){
   const cfg = getSupabaseConfig();
   if(!cfg || !cfg.url || !cfg.anonKey){ supabaseClient=null; supabaseStatus='disconnected'; return null; }
@@ -483,99 +467,24 @@ function ensureSupabaseClient(){
   if(supabaseClient) return supabaseClient;
   return initSupabaseClient();
 }
-async function testSupabaseConnection(){
-  const cfg = getSupabaseConfig();
-  if(!cfg){ supabaseStatus='disconnected'; return; }
-  const client = ensureSupabaseClient();
-  if(!client){ supabaseStatus='error'; supabaseStatusMsg='Không khởi tạo được kết nối'; return; }
-  supabaseStatus = 'connecting';
-  try{
-    const { error } = await client.from(SUPABASE_TABLE).select('id').eq('id', cfg.storeId||'default').limit(1);
-    if(error) throw error;
-    supabaseStatus = 'connected'; supabaseStatusMsg='';
-  }catch(e){
-    supabaseStatus = 'error';
-    supabaseStatusMsg = e.message || 'Không thể kết nối tới Supabase';
-  }
-}
-function scheduleSupabasePush(){
-  const cfg = getSupabaseConfig();
-  if(!cfg || !cfg.autoSync) return;
-  clearTimeout(supabasePushTimer);
-  supabasePushTimer = setTimeout(()=>{ pushStateToSupabase(true); }, 1500);
-}
-async function pushStateToSupabase(silent){
-  const cfg = getSupabaseConfig();
-  if(!cfg){ if(!silent) toast('Chưa cấu hình Supabase','warning'); return; }
-  const client = ensureSupabaseClient();
-  if(!client){ if(!silent) toast('Không khởi tạo được kết nối Supabase','error'); return; }
-  supabaseSyncing = true;
-  try{
-    const { error } = await client.from(SUPABASE_TABLE).upsert({
-      id: cfg.storeId || 'default',
-      data: state,
-      updated_at: new Date().toISOString(),
-    });
-    if(error) throw error;
-    supabaseStatus = 'connected'; supabaseStatusMsg='';
-    if(!silent) toast('Đã đồng bộ dữ liệu lên Supabase thành công','success');
-  }catch(e){
-    supabaseStatus = 'error'; supabaseStatusMsg = e.message || 'Lỗi đồng bộ';
-    if(!silent) toast('Lỗi đồng bộ Supabase: '+(e.message||''),'error');
-  }
-  supabaseSyncing = false;
-  if(mainState.settings && mainState.settings.tab==='supabase') render();
-}
-async function pullStateFromSupabase(silent){
-  const cfg = getSupabaseConfig();
-  if(!cfg){ if(!silent) toast('Chưa cấu hình Supabase','warning'); return false; }
-  const client = ensureSupabaseClient();
-  if(!client){ if(!silent) toast('Không khởi tạo được kết nối Supabase','error'); return false; }
-  supabaseSyncing = true;
-  try{
-    const { data, error } = await client.from(SUPABASE_TABLE).select('data').eq('id', cfg.storeId||'default').maybeSingle();
-    if(error) throw error;
-    supabaseStatus = 'connected'; supabaseStatusMsg='';
-    supabaseSyncing = false;
-    if(data && data.data){
-      state = Object.assign(defaultState(), data.data);
-      ensureFinanceState();
-      saveData();
-      if(!silent) toast('Đã tải dữ liệu từ Supabase thành công','success');
-      return true;
-    } else {
-      if(!silent) toast('Chưa có dữ liệu trên Supabase cho mã cửa hàng này','warning');
-      return false;
-    }
-  }catch(e){
-    supabaseSyncing = false;
-    supabaseStatus = 'error'; supabaseStatusMsg = e.message || 'Lỗi tải dữ liệu';
-    if(!silent) toast('Lỗi tải dữ liệu từ Supabase: '+(e.message||''),'error');
-    return false;
-  }
-}
-function saveSupabaseSettingsForm(){
+async function saveSupabaseSettingsForm(){
   const url = document.getElementById('sbUrl').value.trim();
   const anonKey = document.getElementById('sbKey').value.trim();
   const storeId = document.getElementById('sbStoreId').value.trim() || 'default';
   const autoSync = document.getElementById('sbAutoSync').checked;
   if(!url || !anonKey){ toast('Vui lòng nhập đầy đủ Project URL và Anon Key','error'); return; }
+  if(hasPendingChanges()){toast('Có thay đổi chưa lưu; hãy tải bản nháp JSON trước khi đổi kết nối','warning');return;}
+  await ensureSupabaseClient()?.auth.signOut();
   setSupabaseConfig({url, anonKey, storeId, autoSync});
+  accessProfile=null;accessUser=null;state=null;serverSnapshot=null;
   initSupabaseClient();
   toast('Đã lưu cấu hình Supabase','success');
-  testSupabaseConnection().then(render);
-  render();
-}
-function disconnectSupabase(){
-  confirmAction('Ngắt kết nối Supabase? Dữ liệu vẫn được lưu trên trình duyệt (localStorage).', ()=>{
-    clearSupabaseConfig(); closeModal(); render(); toast('Đã ngắt kết nối Supabase','success');
-  });
+  loginPage('Đã thay đổi kết nối. Vui lòng đăng nhập lại.');
 }
 function confirmPullFromSupabase(){
-  confirmAction('Thao tác này sẽ GHI ĐÈ toàn bộ dữ liệu hiện tại trên trình duyệt bằng dữ liệu mới nhất trên Supabase. Tiếp tục?', async ()=>{
+  confirmAction('Tải bản dữ liệu mới nhất từ Supabase? Nếu còn thay đổi chưa lưu, thao tác sẽ bị chặn.', async ()=>{
     closeModal();
-    await pullStateFromSupabase(false);
-    render();
+    if(await pullStateFromSupabase(false))render();
   });
 }
 function copySupabaseSql(){
@@ -584,22 +493,7 @@ function copySupabaseSql(){
   try{ document.execCommand('copy'); toast('Đã copy đoạn SQL','success'); }
   catch(e){ toast('Không thể copy tự động, vui lòng bôi đen và copy thủ công','warning'); }
 }
-const SUPABASE_SQL = `-- Chạy đoạn SQL này trong Supabase SQL Editor (1 lần duy nhất)
-create table if not exists ecom_digital_data (
-  id text primary key,
-  data jsonb not null,
-  updated_at timestamptz not null default now()
-);
-
-alter table ecom_digital_data enable row level security;
-
--- Cho phép đọc/ghi bằng anon key (vì app chạy hoàn toàn ở trình duyệt, không có backend riêng)
-create policy "ecom_digital_select" on ecom_digital_data
-  for select using (true);
-create policy "ecom_digital_insert" on ecom_digital_data
-  for insert with check (true);
-create policy "ecom_digital_update" on ecom_digital_data
-  for update using (true) with check (true);`;
+const SUPABASE_SQL = `Mở tệp auth-setup.sql trong cùng thư mục với ứng dụng. Sao lưu dữ liệu và làm theo HUONG-DAN-TAI-KHOAN.md trước khi chạy SQL.`;
 
 /* ---------------- DEMO DATA GENERATION ---------------- */
 function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
@@ -1023,12 +917,13 @@ const ROUTE_TITLE = {};
 MENU.forEach(g=>g.items.forEach(i=>ROUTE_TITLE[i.key]=i.label));
 
 function navigate(route){
+  if(!canAccessRoute(route)){toast('Tài khoản không có quyền truy cập hạng mục này','error');return;}
   currentRoute = route;
   window.location.hash = route;
   render();
   closeMobileSidebar();
 }
-window.addEventListener('hashchange', ()=>{ const r=window.location.hash.replace('#',''); if(r) { currentRoute=r; render(); } });
+window.addEventListener('hashchange', ()=>{ const r=window.location.hash.replace('#',''); if(r&&accessProfile&&canAccessRoute(r)) { currentRoute=r; render(); } });
 
 /* ---------------- APP SHELL ---------------- */
 let sidebarCollapsed = false;
@@ -1054,7 +949,7 @@ function renderShell(){
         <div class="search-box">${icon('search',16)}<input id="globalSearch" placeholder="Tìm mã đơn, SKU, sản phẩm, KOC, campaign..." /></div>
         <div class="topbar-right">
           <button class="icon-btn" onclick="showNotifications()">${icon('bell',16)}<span class="dot" id="notifDot"></span></button>
-          <button class="icon-btn" onclick="navigate('settings')">${icon('settings',16)}</button>
+          ${isAdmin()?`<button class="icon-btn" onclick="navigate('settings')">${icon('settings',16)}</button>`:''}<button class="btn btn-sm" onclick="logoutAccount()" title="Đăng xuất">Đăng xuất</button>
           <div class="avatar">ED</div>
         </div>
       </div>
@@ -1062,13 +957,13 @@ function renderShell(){
     </div>
   `;
   const nav = document.getElementById('sbNav');
-  nav.innerHTML = MENU.map(g=>`
+  nav.innerHTML = MENU.map(g=>({...g,items:g.items.filter(it=>canAccessRoute(it.key))})).filter(g=>g.items.length).map(g=>`
     <div class="sb-group-title">${g.group}</div>
     ${g.items.map(it=>`<a class="sb-item ${currentRoute===it.key?'active':''}" onclick="navigate('${it.key}')">${icon(it.icon,17)}<span class="label">${it.label}</span></a>`).join('')}
   `).join('');
   document.getElementById('globalSearch').addEventListener('input', debounce(e=>{
     const q = e.target.value.trim();
-    if(q.length>1){ navigate('orders'); mainState.orders_search = q; render(); }
+    if(q.length>1&&canAccessRoute('orders')){ navigate('orders'); mainState.orders_search = q; render(); }
   },500));
 }
 
@@ -1116,12 +1011,15 @@ function closeModal(){ const m=document.getElementById('modalOverlay'); if(m) m.
 
 /* ================= RENDER ROUTER ================= */
 function render(){
+  if(!accessProfile||!state){loginPage();return;}
+  if(!canAccessRoute(currentRoute)){currentRoute=firstAccessibleRoute();if(!currentRoute){loginPage('Chưa có hạng mục được cấp quyền.');return;}}
   renderShell();
   const c = document.getElementById('pageContent');
   const fn = PAGES[currentRoute] || PAGES.dashboard;
-  c.innerHTML = fn();
+  c.innerHTML = syncNotice()+fn();
   lucide.createIcons();
   afterRenderHooks[currentRoute] && afterRenderHooks[currentRoute]();
+  lockReadonlyUI();
 }
 const afterRenderHooks = {};
 
@@ -1623,6 +1521,7 @@ function downloadTemplate(type){
    ======================================================== */
 mainState.products = {search:'', category:'all'};
 function pageProducts(){
+  if(!canRead('finance'))return pageProductsCatalogOnly();
   const s = mainState.products;
   const filters = dateRangeForFull();
   const metrics = computeProductMetrics(filters);
@@ -1669,6 +1568,12 @@ function pageProducts(){
   </table></div>`}
   `;
 }
+function pageProductsCatalogOnly(){
+ const s=mainState.products,list=state.products.filter(p=>(s.category==='all'||p.category===s.category)&&(!s.search||(p.sku+' '+p.name).toLowerCase().includes(s.search.toLowerCase())));
+ s.selected=selectedProductIds();
+ return `<div class="page-title">Sản phẩm</div><p class="muted">Tài khoản này chỉ xem thông tin sản phẩm; số liệu doanh thu và lợi nhuận cần quyền tài chính.</p><div class="filter-row"><input class="input" placeholder="Tìm sản phẩm" value="${escapeHtml(s.search)}" oninput="s=mainState.products;s.search=this.value;s.selected=[];render()"><button class="btn btn-primary" onclick="openProductModal()">+ Thêm sản phẩm</button></div><div class="filter-row"><b>Đã chọn ${s.selected.length}</b><select class="select" id="productBulkAction"><option value="active">Hoạt động</option><option value="inactive">Ngừng bán</option><option value="category">Đổi danh mục</option><option value="delete">Xóa mục chưa liên kết</option></select><select class="select" id="productBulkCategory"><option value="">Danh mục đích</option>${state.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select><button class="btn" onclick="applyProductBulk()">Áp dụng</button></div><div class="table-wrap"><table><thead><tr><th><input type="checkbox" aria-label="Chọn tất cả" onchange="toggleAllProducts(this.checked)"></th><th>SKU</th><th>Tên</th><th>Danh mục</th><th>Giá vốn</th><th>Giá bán</th><th>Trạng thái</th><th></th></tr></thead><tbody>${list.map(p=>`<tr><td><input type="checkbox" ${s.selected.includes(p.id)?'checked':''} onchange="toggleProductSelection('${p.id}',this.checked)"></td><td>${escapeHtml(p.sku)}</td><td>${escapeHtml(p.name)}</td><td>${escapeHtml(state.categories.find(c=>c.id===p.category)?.name||'')}</td><td>${formatCurrency(p.costPrice)}</td><td>${formatCurrency(p.sellPrice)}</td><td>${p.status==='active'?'Hoạt động':'Ngừng bán'}</td><td><button class="btn btn-sm" onclick="openProductModal('${p.id}')">Sửa</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
 function openProductModal(id){
   const editing = id? getProduct(id): null;
   const p = editing || {id:null, sku:'SKU'+String(state.products.length+1).padStart(3,'0'), name:'', category:state.categories[0]?.id||'', platformId:state.platforms[0].id, importPrice:0, sellPrice:0, costPrice:0, platformFeePct:0, platformManagementFee:0, status:'active'};
@@ -2619,6 +2524,7 @@ function submitCampaignForm(id){
   saveData(); closeModal(); render(); toast(id?'Cập nhật chiến dịch':'Thêm chiến dịch thành công','success');
 }
 function deleteCampaign(id){
+  if(state.ads.some(a=>a.campaign===id)&&!canEdit('finance')){toast('Chiến dịch đã liên kết chi phí quảng cáo; cần quyền sửa tài chính để xóa','warning');return;}
   confirmAction('Xóa chiến dịch này?', ()=>{ state.campaigns=state.campaigns.filter(c=>c.id!==id); state.ads=state.ads.filter(a=>a.campaign!==id); saveData(); render(); toast('Đã xóa chiến dịch','success'); });
 }
 
@@ -2804,7 +2710,7 @@ function exportReportExcel(){
 mainState.settings = {tab:'business'};
 function pageSettings(){
   const s = mainState.settings;
-  const tabs=[['business','Thông tin doanh nghiệp'],['platforms','Cài đặt sàn'],['scoring','KOC Scoring'],['categories','Danh mục'],['backup','Backup/Restore'],['supabase','Kết nối Supabase']];
+  const tabs=[['accounts','Tài khoản & phân quyền'],['business','Thông tin doanh nghiệp'],['platforms','Cài đặt sàn'],['scoring','KOC Scoring'],['categories','Danh mục'],['backup','Backup/Restore'],['supabase','Kết nối Supabase']];
   let body='';
   const biz = state.settings.business;
   if(s.tab==='business'){
@@ -2860,6 +2766,8 @@ function pageSettings(){
         <button class="btn btn-danger" onclick="confirmClearAll()">Xóa toàn bộ dữ liệu</button>
       </div>
     </div>`;
+  } else if(s.tab==='accounts'){
+    body=permissionsPage();
   } else if(s.tab==='supabase'){
     const cfg = getSupabaseConfig();
     const statusColor = supabaseStatus==='connected'?'var(--green)': supabaseStatus==='connecting'?'var(--yellow)': supabaseStatus==='error'?'var(--red)':'var(--muted)';
@@ -2868,17 +2776,17 @@ function pageSettings(){
     <div class="grid grid-2" style="margin-bottom:14px">
       <div class="card">
         <div class="section-title">${icon('backup',16)} Cấu hình Supabase</div>
-        <p class="muted" style="font-size:12.5px;margin-bottom:12px">Toàn bộ dữ liệu ECOM DIGITAL sẽ được đồng bộ 2 chiều dưới dạng 1 bản ghi JSON trong bảng <code>${SUPABASE_TABLE}</code> trên Supabase. Trình duyệt vẫn lưu bản sao trong localStorage để dùng offline.</p>
+        <p class="muted" style="font-size:12.5px;margin-bottom:12px">Dữ liệu ECOM DIGITAL được lưu tập trung và kiểm tra quyền đọc/ghi trước mỗi thao tác trong bảng <code>${SUPABASE_TABLE}</code> trên Supabase. Sau khi đăng nhập, dữ liệu được đọc/ghi qua các hàm kiểm tra quyền trên Supabase; ứng dụng không lưu bản sao dữ liệu kinh doanh vào localStorage.</p>
         <div class="form-row"><label>Project URL *</label><input class="input" id="sbUrl" placeholder="https://xxxx.supabase.co" value="${escapeHtml(cfg?.url||'')}"></div>
         <div class="form-row"><label>Anon Public Key *</label><input class="input" id="sbKey" placeholder="eyJhbGciOi..." value="${escapeHtml(cfg?.anonKey||'')}"></div>
         <div class="form-row"><label>Mã cửa hàng (Store ID)</label><input class="input" id="sbStoreId" placeholder="default" value="${escapeHtml(cfg?.storeId||'default')}"></div>
         <div class="form-row" style="display:flex;align-items:center;gap:8px">
-          <input type="checkbox" id="sbAutoSync" ${cfg?.autoSync?'checked':''} style="width:16px;height:16px">
-          <label style="margin:0" for="sbAutoSync">Tự động đồng bộ lên Supabase mỗi khi có thay đổi</label>
+          <input type="checkbox" id="sbAutoSync" checked disabled style="width:16px;height:16px">
+          <label style="margin:0" for="sbAutoSync">Tự động lưu thay đổi lên Supabase (bắt buộc khi dùng phân quyền)</label>
         </div>
         <div class="row-actions" style="margin-top:6px">
           <button class="btn btn-primary" onclick="saveSupabaseSettingsForm()">${icon('save',14)} Lưu &amp; Kết nối</button>
-          ${cfg? `<button class="btn btn-danger" onclick="disconnectSupabase()">${icon('x',14)} Ngắt kết nối</button>`:''}
+
         </div>
       </div>
       <div class="card">
@@ -2895,28 +2803,10 @@ function pageSettings(){
         <div class="row-actions" style="margin-top:8px">
           <button class="btn" onclick="confirmPullFromSupabase()">${icon('download',14)} Tải dữ liệu từ Supabase</button>
         </div>
-        <p class="muted" style="font-size:11px;margin-top:10px">Lưu ý: "Tải dữ liệu từ Supabase" sẽ ghi đè toàn bộ dữ liệu hiện tại trên trình duyệt này.</p>
+        <p class="muted" style="font-size:11px;margin-top:10px">Nếu có thay đổi chưa đồng bộ, hãy tải bản nháp JSON trước khi tải lại dữ liệu.</p>
       </div>
     </div>
-    <div class="card" style="margin-bottom:14px">
-      <div class="section-title">Bước 1: Tạo bảng trên Supabase ${icon('info',15)}</div>
-      <p class="muted" style="font-size:12.5px">Mở Project trên supabase.com → SQL Editor → dán đoạn SQL dưới đây và chạy (chỉ cần làm 1 lần):</p>
-      <textarea class="input" id="sbSqlBox" readonly style="width:100%;min-height:180px;font-family:monospace;font-size:11.5px;white-space:pre">${escapeHtml(SUPABASE_SQL)}</textarea>
-      <button class="btn" style="margin-top:8px" onclick="copySupabaseSql()">${icon('download',14)} Copy SQL</button>
-    </div>
-    <div class="card">
-      <div class="section-title" style="color:var(--yellow)">${icon('alert',16)} Lưu ý bảo mật</div>
-      <p class="muted" style="font-size:12.5px;line-height:1.6">
-        App chạy hoàn toàn trên trình duyệt (không có backend riêng) nên Anon Key sẽ hiển thị công khai trong mã nguồn phía client.
-        Đoạn SQL ở trên bật quyền đọc/ghi công khai (RLS cho phép <code>true</code>) để app hoạt động được ngay, nghĩa là bất kỳ ai
-        có Project URL + Anon Key + đúng "Mã cửa hàng" đều có thể đọc/ghi dữ liệu này. Khuyến nghị:
-      </p>
-      <ul style="font-size:12.5px;color:var(--muted);line-height:1.8;padding-left:18px">
-        <li>Đặt "Mã cửa hàng" là một chuỗi khó đoán (không dùng "default" khi dùng thật)</li>
-        <li>Không lưu dữ liệu quá nhạy cảm (thông tin thẻ, mật khẩu, CCCD...) trong hệ thống này</li>
-        <li>Nếu cần bảo mật cao hơn, nên bổ sung Supabase Auth + RLS theo user thay vì policy mở công khai</li>
-      </ul>
-    </div>`;
+    <div class="card"><div class="section-title">Thiết lập quyền truy cập</div><p class="muted">Xem tệp <b>HUONG-DAN-TAI-KHOAN.md</b> và <b>auth-setup.sql</b> trong cùng thư mục. SQL cũ cho phép truy cập công khai không còn được dùng. Tạo tài khoản trong Supabase Authentication trước, sau đó cấp quyền tại tab Tài khoản & phân quyền.</p></div>`;
   }
   return `<div class="page-title">Cài đặt</div><div class="page-sub">Cấu hình hệ thống ECOM DIGITAL</div>
   <div class="tabs">${tabs.map(([k,l])=>`<button class="tab-btn ${s.tab===k?'active':''}" onclick="mainState.settings.tab='${k}';render()">${l}</button>`).join('')}</div>
@@ -3121,6 +3011,118 @@ function bindWorkflowDrag(){
 }
 afterRenderHooks.organization=()=>{bindMindmap();bindWorkflowDrag();};
 
+/* ECOM access: all business reads/writes go through authenticated RPCs. */
+const ACCESS_MODULES=[
+ {id:'catalog',name:'Sản phẩm',description:'Danh mục sản phẩm, giá bán và giá vốn'},
+ {id:'finance',name:'Doanh thu & tài chính',description:'Đơn hàng, chi phí, quỹ, công nợ và báo cáo tài chính'},
+ {id:'koc',name:'KOC / Affiliate',description:'KOC, nhóm, chiến dịch và booking; cần quyền xem tài chính để xem số liệu liên quan'},
+ {id:'planning',name:'Kế hoạch kinh doanh',description:'Kế hoạch, mục tiêu và công việc; cần quyền xem tài chính để đối chiếu thực tế'},
+ {id:'organization',name:'Bộ máy & phối hợp',description:'Phòng ban, nhân sự phụ trách, sơ đồ và quy trình'}
+];
+const ROUTE_ACCESS={dashboard:'finance',orders:'finance',products:'catalog',revenue:'finance',refunds:'finance',finance:'finance',treasury:'finance',expenses:'finance',profit:'finance',settlement:'finance',cashflow:'finance',breakeven:'finance',business_plans:'planning',organization:'organization',koc_overview:'koc',koc_list:'koc',koc_group:'koc',campaigns:'koc',bookings:'koc',ads:'finance',reports:'admin',settings:'admin'};
+const KEY_ACCESS={settings:'_shared',platforms:'_shared',categories:'_shared',products:'catalog',orders:'finance',expenses:'finance',cashAccounts:'finance',payables:'finance',loans:'finance',ads:'finance',customExpenseTypes:'finance',deletedExpenseTypeIds:'finance',expenseTypeNames:'finance',kocs:'koc',kocGroups:'koc',campaigns:'koc',bookings:'koc',businessPlans:'planning',organization:'organization',employees:'organization'};
+let accessProfile=null,accessUser=null,serverRevision=null,serverSnapshot=null,saveInFlight=false,saveBlocked=false,saveTimer=null,saveMessage='',memberList=null;
+function isAdmin(){return accessProfile?.role==='admin';}
+function canRead(module){return isAdmin()||['view','edit'].includes(accessProfile?.permissions?.[module]);}
+function canEdit(module){return isAdmin()||accessProfile?.permissions?.[module]==='edit';}
+function canAccessRoute(route){
+ const module=ROUTE_ACCESS[route];if(!module)return false;
+ if(module==='admin')return isAdmin();
+ if(!canRead(module))return false;
+ if(['koc','planning'].includes(module)&&!canRead('finance'))return false;
+ return true;
+}
+function firstAccessibleRoute(){return MENU.flatMap(g=>g.items).map(i=>i.key).find(canAccessRoute)||'';}
+function loginPage(message=''){
+ const cfg=getSupabaseConfig(),app=document.getElementById('app');
+ app.innerHTML=`<main class="auth-screen"><div class="card auth-card"><div class="page-title">ECOM DIGITAL</div><p class="muted">Đăng nhập bằng tài khoản nhân viên đã được quản trị viên cấp quyền.</p>${message?`<div class="insight-box"><p>${escapeHtml(message)}</p></div>`:''}
+ <form id="loginForm" onsubmit="event.preventDefault();loginWithPassword()"><div class="form-row"><label>Email</label><input class="input" id="authEmail" type="email" autocomplete="username" required></div><div class="form-row"><label>Mật khẩu</label><input class="input" id="authPassword" type="password" autocomplete="current-password" required></div><button class="btn btn-primary" type="submit">Đăng nhập</button></form>
+ ${!cfg?.url||!cfg?.anonKey?`<details><summary>Thiết lập kết nối lần đầu</summary><div class="form-row"><label>Project URL</label><input class="input" id="loginProjectUrl" placeholder="https://project.supabase.co"></div><div class="form-row"><label>Publishable / anon key</label><input class="input" id="loginAnonKey" autocomplete="off"></div><div class="form-row"><label>Mã cửa hàng</label><input class="input" id="loginStoreId" value="default"></div><button class="btn" onclick="saveLoginConfig()">Lưu kết nối</button></details>`:''}
+ <p class="muted" style="font-size:12px">Không có tài khoản? Người quản trị tạo email trong Supabase Authentication và cấp quyền trong Cài đặt → Tài khoản & phân quyền.</p></div></main>`;
+}
+function saveLoginConfig(){const url=document.getElementById('loginProjectUrl')?.value.trim(),anonKey=document.getElementById('loginAnonKey')?.value.trim(),storeId=document.getElementById('loginStoreId')?.value.trim()||'default';if(!url?.startsWith('https://')||!anonKey){loginPage('Cần Project URL HTTPS và publishable/anon key hợp lệ.');return;}setSupabaseConfig({url,anonKey,storeId,autoSync:true});supabaseClient=null;loginPage('Đã lưu kết nối. Hãy đăng nhập.');}
+async function loginWithPassword(){
+ const email=document.getElementById('authEmail')?.value.trim(),password=document.getElementById('authPassword')?.value;
+ const client=ensureSupabaseClient();if(!client){loginPage('Thiếu cấu hình Supabase.');return;}
+ try{
+  const {error}=await client.auth.signInWithPassword({email,password});
+  if(error){loginPage('Đăng nhập không thành công. Kiểm tra email, mật khẩu hoặc tài khoản Supabase.');return;}
+  await loadAuthorizedState();
+ }catch(e){loginPage('Không kết nối được tới Supabase. Hãy kiểm tra mạng và cấu hình dự án.');}
+}
+async function loadAuthorizedState(){
+ if(accessProfile&&hasPendingChanges()){toast('Hãy lưu hoặc tải bản nháp trước khi tải lại dữ liệu','warning');return false;}
+ const client=ensureSupabaseClient();if(!client){loginPage('Thiếu cấu hình Supabase.');return false;}
+ const {data:userData,error:userError}=await client.auth.getUser();
+ if(userError||!userData?.user){accessProfile=null;accessUser=null;loginPage('Hãy đăng nhập để xem dữ liệu.');return false;}
+ accessUser=userData.user;
+ const {data,error}=await client.rpc('ecom_read_state',{p_store:getSupabaseConfig().storeId||'default'});
+ if(error){accessProfile=null;state=null;loginPage(error.code==='PGRST202'?'Chưa cài đặt tệp auth-setup.sql trên Supabase.':`Tài khoản chưa có quyền hoặc cấu hình chưa hoàn tất: ${error.message}`);return false;}
+ accessProfile={role:data.role,permissions:data.permissions||{}};serverRevision=Number(data.revision);saveBlocked=false;saveMessage='';supabaseStatus='connected';memberList=null;
+ const base=defaultState();base.employees=[];
+ state=Object.assign(base,data.data||{});ensureFinanceState();serverSnapshot=JSON.parse(JSON.stringify(state));
+ currentRoute=canAccessRoute(window.location.hash.slice(1))?window.location.hash.slice(1):firstAccessibleRoute();
+ if(currentRoute){window.location.hash=currentRoute;render();}else document.getElementById('app').innerHTML='<div class="auth-screen"><div class="card auth-card"><h2>Chưa có hạng mục được cấp quyền</h2><button class="btn" onclick="logoutAccount()">Đăng xuất</button></div></div>';
+ return true;
+}
+async function logoutAccount(){if(hasPendingChanges()){toast('Đang có thay đổi chưa đồng bộ. Hãy lưu hoặc tải bản nháp trước khi đăng xuất.','warning');return;}await ensureSupabaseClient()?.auth.signOut();accessProfile=null;accessUser=null;state=null;serverSnapshot=null;serverRevision=null;memberList=null;loginPage('Đã đăng xuất.');}
+function authorizedPatch(){
+ if(!serverSnapshot||!state)return {};
+ const patch={};for(const key of Object.keys(KEY_ACCESS))if(JSON.stringify(state[key])!==JSON.stringify(serverSnapshot[key]))patch[key]=state[key];
+ return patch;
+}
+function hasPendingChanges(){return Object.keys(authorizedPatch()).length>0;}
+function saveData(){
+ if(!accessProfile||!state)return;
+ const patch=authorizedPatch();
+ const deniedKey=Object.keys(patch).find(key=>{const module=KEY_ACCESS[key];return module==='_shared'?!isAdmin():!canEdit(module);});
+ if(deniedKey){
+  const defaults=defaultState();
+  for(const key of Object.keys(patch))state[key]=JSON.parse(JSON.stringify(serverSnapshot[key]===undefined?defaults[key]:serverSnapshot[key]));
+  saveMessage='Thay đổi không thuộc quyền sửa của tài khoản này; đã bỏ thao tác.';toast(saveMessage,'error');render();return;
+ }
+ saveMessage='Đang lưu thay đổi lên Supabase…';scheduleSupabasePush();
+}
+function scheduleSupabasePush(){if(saveBlocked||!accessProfile)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>pushStateToSupabase(true),500);}
+async function pushStateToSupabase(silent=false){
+ if(saveInFlight||saveBlocked||!accessProfile)return;
+ const patch=authorizedPatch();if(!Object.keys(patch).length){if(!silent)toast('Không có thay đổi mới','success');return;}
+ for(const key of Object.keys(patch)){const module=KEY_ACCESS[key];if(module==='_shared'?!isAdmin():!canEdit(module)){saveMessage='Thay đổi vượt quyền được cấp';render();return;}}
+ saveInFlight=true;const cfg=getSupabaseConfig();
+ try{
+ const {data,error}=await ensureSupabaseClient().rpc('ecom_write_state',{p_store:cfg.storeId||'default',p_revision:serverRevision,p_patch:patch});if(error)throw error;
+ serverRevision=Number(data);for(const [key,value] of Object.entries(patch))serverSnapshot[key]=JSON.parse(JSON.stringify(value));saveMessage='Đã lưu lên Supabase';supabaseStatus='connected';
+ if(!silent)toast(saveMessage,'success');
+ }catch(e){saveBlocked=true;saveMessage=`Chưa lưu lên Supabase: ${e.message}. Xuất bản nháp trước khi tải lại.`;supabaseStatus='error';toast(saveMessage,'error');}
+ finally{saveInFlight=false;if(accessProfile&&document.getElementById('pageContent'))render();if(!saveBlocked&&hasPendingChanges())scheduleSupabasePush();}
+}
+async function pullStateFromSupabase(silent=false){if(hasPendingChanges()){toast('Có thay đổi chưa lưu. Hãy xuất bản nháp trước khi tải lại.','warning');return false;}return loadAuthorizedState();}
+async function testSupabaseConnection(){const ok=await loadAuthorizedState();supabaseStatus=ok?'connected':'error';supabaseStatusMsg=ok?'':'Không đọc được dữ liệu bằng tài khoản hiện tại';}
+function syncNotice(){return saveMessage&&saveMessage!=='Đã lưu lên Supabase'?`<div class="insight-box" style="margin-bottom:12px"><p>${escapeHtml(saveMessage)} ${saveBlocked?'<button class="btn btn-sm" onclick="exportBackup()">Tải bản nháp JSON</button>':''}</p></div>`:'';}
+function lockReadonlyUI(){
+ const module=ROUTE_ACCESS[currentRoute];if(isAdmin()||canEdit(module))return;
+ const root=document.getElementById('pageContent');if(!root)return;
+ const writePattern=/^(open(?:Order|Product|Expense|Loan|CashAccount|Payable|SettlePayable|BusinessPlan|PlanProduct|PlanTask|Koc|Group|Campaign|Booking|Ad|Department|Workflow|Handoff|ExpenseType)Modal|submit|delete|bulk|applyProductBulk|save|update|settle|undo|reset|clearAll|generateDemo|addInline|renameInline|requestDelete|toggleAllProducts|toggleProductSelection|moveHandoff|reorderWorkflow|openBookingModal)/i;
+ root.querySelectorAll('button[onclick],input[type="checkbox"][onchange]').forEach(el=>{const action=el.getAttribute('onclick')||el.getAttribute('onchange')||'';if(writePattern.test(action.trim())){el.disabled=true;el.title='Chỉ có quyền xem';}});
+ root.querySelectorAll('.map-drag,.map-port,.workflow-handle,.map-edges').forEach(el=>el.style.pointerEvents='none');
+ root.querySelectorAll('.workflow-edit input,.workflow-edit textarea,.workflow-edit select').forEach(el=>el.disabled=true);
+ root.insertAdjacentHTML('afterbegin','<div class="insight-box"><p>Chế độ chỉ xem. Liên hệ quản trị viên để được cấp quyền sửa.</p></div>');
+}
+function permissionsPage(){
+ const rows=memberList||[];
+ return `<div class="card"><div class="section-title">Tài khoản & phân quyền</div><p class="muted">Bước 1: tạo tài khoản email và mật khẩu ở Supabase → Authentication → Users → Add user. Bước 2: nhập đúng email ở đây để cấp quyền. Chỉ tài khoản đã tồn tại trên Supabase mới đăng nhập được.</p><button class="btn" onclick="loadMemberList()">Tải danh sách tài khoản</button>
+ ${rows.length?`<div class="table-wrap"><table><thead><tr><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead><tbody>${rows.map(m=>`<tr><td>${escapeHtml(m.email)}</td><td>${m.role==='admin'?'Quản trị':'Nhân viên'}</td><td>${m.active?'Đang hoạt động':'Đã khóa'}</td><td><button class="btn btn-sm" onclick="showMemberForm(${escapeHtml(JSON.stringify(m.email))})">Sửa quyền</button></td></tr>`).join('')}</tbody></table></div>`:''}
+ <button class="btn btn-primary" onclick="showMemberForm()">+ Cấp quyền cho tài khoản</button></div>`;
+}
+async function loadMemberList(){if(!isAdmin())return;const {data,error}=await ensureSupabaseClient().rpc('ecom_list_members',{p_store:getSupabaseConfig().storeId||'default'});if(error){toast(error.message,'error');return;}memberList=data;render();}
+function showMemberForm(email=''){
+ if(!isAdmin())return;const m=memberList?.find(x=>x.email===email),permissions=m?.permissions||{};
+ openModal({title:m?'Sửa quyền tài khoản':'Cấp quyền tài khoản đã tạo',wide:true,bodyHtml:`<form id="memberForm"><div class="form-grid2"><div class="form-row"><label>Email tài khoản Supabase *</label><input class="input" type="email" name="email" value="${escapeHtml(email)}" ${m?'readonly':''} required></div><div class="form-row"><label>Vai trò</label><select class="select" name="role"><option value="staff" ${m?.role==='staff'?'selected':''}>Nhân viên</option><option value="admin" ${m?.role==='admin'?'selected':''}>Quản trị viên (toàn quyền)</option></select></div></div><p class="muted">Quyền theo hạng mục. KOC và Kế hoạch cần ít nhất quyền Chỉ xem ở Doanh thu & tài chính để đối chiếu số liệu.</p>${ACCESS_MODULES.map(x=>`<div class="form-row"><label>${escapeHtml(x.name)} <small class="muted">${escapeHtml(x.description)}</small></label><select class="select" name="perm_${x.id}">${[['','Không truy cập'],['view','Chỉ xem'],['edit','Được sửa']].map(([v,label])=>`<option value="${v}" ${permissions[x.id]===v?'selected':''}>${label}</option>`).join('')}</select></div>`).join('')}<label><input type="checkbox" name="active" ${m?.active!==false?'checked':''}> Tài khoản đang hoạt động</label></form>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="saveMemberForm()">Lưu quyền</button>`});
+}
+async function saveMemberForm(){const form=document.getElementById('memberForm');if(!form.reportValidity())return;const fd=new FormData(form),permissions={};for(const x of ACCESS_MODULES){const level=fd.get('perm_'+x.id);if(level)permissions[x.id]=level;}if((permissions.koc||permissions.planning)&&!permissions.finance){toast('Cần ít nhất quyền Chỉ xem Doanh thu & tài chính cho KOC hoặc Kế hoạch','error');return;}
+ const {error}=await ensureSupabaseClient().rpc('ecom_set_member',{p_store:getSupabaseConfig().storeId||'default',p_email:fd.get('email').trim(),p_role:fd.get('role'),p_permissions:permissions,p_active:fd.has('active')});if(error){toast(error.message,'error');return;}closeModal();toast('Đã lưu quyền tài khoản','success');await loadMemberList();}
+window.addEventListener('beforeunload',e=>{if(hasPendingChanges()){e.preventDefault();e.returnValue='';}});
+
 const PAGES = {
   organization:pageOrganization, dashboard:pageDashboard, business_plans:pageBusinessPlans, orders:pageOrders, products:pageProducts, revenue:pageRevenue, refunds:pageRefunds,
   finance:pageFinance, treasury:pageTreasury, expenses:pageExpenses, profit:pageProfit, settlement:pageSettlement, cashflow:pageCashflow, breakeven:pageBreakeven,
@@ -3130,23 +3132,12 @@ const PAGES = {
 
 /* ---------------- INIT ---------------- */
 async function init(){
-  const loaded = loadData();
-  if(!loaded){
-    state = defaultState();
-    generateDemoData();
-    saveData();
-  }
-  const hashRoute = window.location.hash.replace('#','');
-  currentRoute = PAGES[hashRoute] ? hashRoute : 'dashboard';
-  render();
-  // Nếu đã cấu hình Supabase, thử tải dữ liệu mới nhất từ cloud (không chặn render ban đầu)
-  const cfg = getSupabaseConfig();
-  if(cfg){
-    initSupabaseClient();
-    const got = await pullStateFromSupabase(true);
-    if(got) render();
-    else testSupabaseConnection().then(()=>{ if(mainState.settings && mainState.settings.tab==='supabase') render(); });
-  }
+  // No local business data is opened before authentication. The legacy browser cache is never read here.
+  loginPage();
+  const client=ensureSupabaseClient();
+  if(!client)return;
+  const {data}=await client.auth.getSession();
+  if(data?.session)await loadAuthorizedState();
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
