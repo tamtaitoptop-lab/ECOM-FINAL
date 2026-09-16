@@ -224,6 +224,25 @@ hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
   .treasury-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 @media(max-width:560px){.treasury-summary{grid-template-columns:1fr;}}
+/* Shared funds and organization */
+[hidden]{display:none!important}
+.fund-tile{border:1px solid var(--border);background:var(--bg-2);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.fund-tile strong{font-size:23px}
+.org-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}.org-summary>div{flex:1;min-width:130px;border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--card)}.org-summary strong{display:block;font-size:28px;color:var(--cyan)}.org-summary span{color:var(--muted)}
+.org-map{padding:24px 12px;background:var(--card);border:1px solid var(--border);border-radius:16px}.org-node{position:relative;padding:18px;background:var(--bg-2);border:1px solid #4f4475;border-radius:14px;min-width:0;overflow-wrap:anywhere}.org-node h3{font-size:16px;margin:12px 0 8px}.org-node p{color:var(--muted);font-size:12px;line-height:1.6;min-height:38px}.org-node .btn{margin-top:12px}.org-owner{font-weight:600;color:var(--cyan)}.org-root{max-width:400px;margin:0 auto 42px;text-align:center;background:linear-gradient(140deg,#28204b,#17223d);border-color:var(--purple)}.org-root:after{content:'';position:absolute;height:42px;width:2px;background:var(--purple);top:100%;left:50%}.org-branches{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;border-top:2px solid var(--purple);padding-top:24px}.org-branches>.org-node:before{content:'';position:absolute;width:2px;height:24px;bottom:100%;left:50%;background:var(--purple)}
+.org-copy{margin-top:14px}.org-copy>b{font-size:12px;color:var(--cyan)}.org-copy p{white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0 0;line-height:1.65;color:var(--text)}.org-detail{min-width:0}.org-detail .section-title{flex-wrap:wrap;gap:10px}.handoff-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.handoff-parties{display:flex;align-items:center;gap:16px;background:var(--bg-2);border-radius:10px;padding:14px}.handoff-parties>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}.handoff-parties small{color:var(--muted);font-size:10px}.handoff-parties span{color:var(--cyan)}.handoff-arrow{font-size:24px}.workflow-strip{display:flex;overflow-x:auto;gap:24px;padding:12px 0 22px}.workflow-strip>div{flex:0 0 225px;position:relative;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--bg-2)}.workflow-strip>div:not(:last-child):after{content:'→';position:absolute;right:-20px;top:35%;color:var(--purple)}.workflow-strip span{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin-top:8px}
+@media(max-width:900px){.org-branches{grid-template-columns:repeat(2,minmax(0,1fr))}.handoff-list{grid-template-columns:1fr}}
+@media(max-width:600px){.org-branches{grid-template-columns:1fr}.org-map{padding:20px 12px}.org-summary strong{font-size:23px}.org-summary>div{min-width:90px;padding:12px}.org-detail .row-actions{flex-wrap:wrap}.handoff-parties{gap:8px}.fund-tile strong{font-size:20px}}
+@media(max-width:600px){.topbar{gap:8px;padding-left:12px;padding-right:12px}.breadcrumb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.topbar-right{flex-shrink:0;gap:6px}.filter-row .select{max-width:100%}}
+/* Continuous column spines keep every department at the same reporting level. */
+.org-branches{padding-left:14px;column-gap:32px}
+.org-branches>.org-node:before{left:-14px;top:-26px;bottom:auto;height:calc(100% + 26px);width:2px}
+.org-branches>.org-node:after{content:'';position:absolute;left:-14px;top:50%;width:14px;height:2px;background:var(--purple)}
+.org-branches>.org-node:nth-last-child(-n+3):before{height:calc(50% + 26px)}
+@media(min-width:601px) and (max-width:900px){.org-branches>.org-node:nth-last-child(-n+3):before{height:calc(100% + 26px)}.org-branches>.org-node:nth-last-child(-n+2):before{height:calc(50% + 26px)}}
+@media(max-width:600px){.org-branches>.org-node:nth-last-child(-n+3):before{height:calc(100% + 26px)}.org-branches>.org-node:last-child:before{height:calc(50% + 26px)}}
+
+.finance-click{display:flex;flex-direction:column;gap:14px;text-align:left;color:var(--text);font:inherit;cursor:pointer;width:100%;min-width:0;transition:border-color .15s,background .15s}.finance-click:hover{background:var(--card-hover);border-color:var(--purple)}.finance-click:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}.finance-value{font-size:24px;overflow-wrap:anywhere}.finance-click .muted{font-size:12px}.finance-click .kpi-title{white-space:normal}.filter-row label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -249,7 +268,7 @@ const EXPENSE_TYPES = [
   {id:'platform_fee',name:'Phí sàn',variable:true},
   {id:'payment_fee',name:'Phí thanh toán',variable:true},
   {id:'shipping_fee',name:'Phí vận chuyển',variable:true},
-  {id:'ads',name:'Phí quảng cáo',variable:true},
+  {id:'ads',name:'Chi phí quảng cáo',variable:true},
   {id:'koc_commission',name:'Hoa hồng KOC',variable:true},
   {id:'cogs',name:'Giá vốn',variable:true},
   {id:'import',name:'Chi phí nhập hàng',variable:true},
@@ -264,6 +283,8 @@ const PAYABLE_TYPES = {
   loan_principal:'Tất toán gốc', loan_interest:'Trả lãi', supplier:'Nợ nhà cung cấp',
   tax:'Thuế / BHXH', payroll:'Lương / thưởng', rent:'Thuê mặt bằng', operating:'Chi phí vận hành', other:'Khác'
 };
+const PLAN_STATUS_LABEL={draft:'Bản nháp',active:'Đang triển khai',paused:'Tạm dừng',completed:'Hoàn thành'};
+const PLAN_ITEM_STATUS_LABEL={idea:'Ý tưởng',research:'Nghiên cứu',preparing:'Chuẩn bị',launching:'Đang ra mắt',active:'Đang bán',done:'Hoàn thành',blocked:'Bị chặn'};
 const ICONS = {
   dashboard:'layout-dashboard', orders:'shopping-cart', products:'package', revenue:'trending-up',
   refund:'rotate-ccw', inventory:'boxes', finance:'wallet', income:'arrow-down-circle',
@@ -289,7 +310,8 @@ function formatNumber(v){ if(v===null||v===undefined||isNaN(v)) v=0; return Math
 function formatPct(v){ if(v===null||v===undefined||isNaN(v)||!isFinite(v)) v=0; return v.toFixed(1)+'%'; }
 function safeDiv(a,b){ if(!b) return 0; const r=a/b; return isFinite(r)?r:0; }
 function fmtDate(d){ if(!d) return ''; const dt=new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString('vi-VN'); }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
+function localDateISO(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function todayISO(){ return localDateISO(new Date()); }
 function addDays(dateStr,n){ const d=new Date(dateStr); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
 function escapeHtml(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -343,6 +365,7 @@ function defaultState(){
     cashAccounts:[],
     payables:[],
     loans:[],
+    businessPlans:[],
     employees:[
       {id:uid('emp'),name:'Phương Anh',dept:'Marketing',role:'KOC Manager'},
       {id:uid('emp'),name:'Minh Phạm',dept:'Sales',role:'Sales Executive'},
@@ -357,9 +380,12 @@ function saveData(){
   scheduleSupabasePush();
 }
 function ensureFinanceState(){
+  ensureOrganizationState();
   if(!Array.isArray(state.cashAccounts)) state.cashAccounts=[];
   if(!Array.isArray(state.payables)) state.payables=[];
   if(!Array.isArray(state.loans)) state.loans=[];
+  if(!Array.isArray(state.businessPlans)) state.businessPlans=[];
+  state.businessPlans.forEach(p=>{if(!Array.isArray(p.productPlans))p.productPlans=[];if(!Array.isArray(p.tasks))p.tasks=[];});
 }
 function loadData(){
   try{
@@ -392,6 +418,7 @@ function importBackup(file){
       const data = JSON.parse(e.target.result);
       if(!data.orders || !data.products){ throw new Error('File không đúng định dạng'); }
       state = Object.assign(defaultState(), data);
+      ensureFinanceState();
       saveData();
       toast('Khôi phục dữ liệu thành công','success');
       navigate(currentRoute);
@@ -424,9 +451,9 @@ const DEFAULT_SUPABASE_CONFIG = {
 function getSupabaseConfig(){
   try{
     const raw = localStorage.getItem(SUPABASE_CFG_KEY);
-    return raw ? {...DEFAULT_SUPABASE_CONFIG, ...JSON.parse(raw)} : {...DEFAULT_SUPABASE_CONFIG};
+    return raw ? {...DEFAULT_SUPABASE_CONFIG, ...JSON.parse(raw)} : null;
   }catch(e){
-    return {...DEFAULT_SUPABASE_CONFIG};
+    return null;
   }
 }
 function setSupabaseConfig(cfg){
@@ -662,8 +689,8 @@ function generateDemoData(){
     state.expenses.push({
       id:uid('exp'), date: addDays(todayISO(), -rand(0,89)), docNo:'CT'+String(1000+i),
       type, platformId:null, campaignId:null, kocId:null, productId:null,
-      amount: rand(2,25)*1000000, note: EXPENSE_TYPES.find(t=>t.id===type).name+' tháng',
-      isVariable: EXPENSE_TYPES.find(t=>t.id===type).variable,
+      amount: rand(2,25)*1000000, note: getExpenseTypes().find(t=>t.id===type).name+' tháng',
+      isVariable: getExpenseTypes().find(t=>t.id===type).variable,
     });
   }
 
@@ -773,10 +800,10 @@ function dateRangeFor(preset){
     case 'today': return {from:today,to:today};
     case '7d': return {from:addDays(today,-6),to:today};
     case '30d': return {from:addDays(today,-29),to:today};
-    case 'this_month':{ const d=new Date(); return {from:new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10), to:today}; }
-    case 'last_month':{ const d=new Date(); const first=new Date(d.getFullYear(),d.getMonth()-1,1); const last=new Date(d.getFullYear(),d.getMonth(),0); return {from:first.toISOString().slice(0,10), to:last.toISOString().slice(0,10)}; }
-    case 'this_quarter':{ const d=new Date(); const q=Math.floor(d.getMonth()/3); const first=new Date(d.getFullYear(),q*3,1); return {from:first.toISOString().slice(0,10), to:today}; }
-    case 'this_year':{ const d=new Date(); return {from:new Date(d.getFullYear(),0,1).toISOString().slice(0,10), to:today}; }
+    case 'this_month':{ const d=new Date(); return {from:localDateISO(new Date(d.getFullYear(),d.getMonth(),1)), to:today}; }
+    case 'last_month':{ const d=new Date(); const first=new Date(d.getFullYear(),d.getMonth()-1,1); const last=new Date(d.getFullYear(),d.getMonth(),0); return {from:localDateISO(first), to:localDateISO(last)}; }
+    case 'this_quarter':{ const d=new Date(); const q=Math.floor(d.getMonth()/3); const first=new Date(d.getFullYear(),q*3,1); return {from:localDateISO(first), to:today}; }
+    case 'this_year':{ const d=new Date(); return {from:localDateISO(new Date(d.getFullYear(),0,1)), to:today}; }
     default: return {from:addDays(today,-29),to:today};
   }
 }
@@ -958,6 +985,8 @@ let mainState = {}; // ephemeral ui state per page (filters etc.)
 
 const MENU = [
   {group:'TỔNG QUAN', items:[{key:'dashboard',label:'Dashboard',icon:'dashboard'}]},
+  {group:'QUẢN LÝ', items:[{key:'organization',label:'Bộ máy & phối hợp',icon:'users'}]},
+  {group:'KẾ HOẠCH', items:[{key:'business_plans',label:'Kế hoạch kinh doanh',icon:'reports'}]},
   {group:'BÁN HÀNG', items:[
     {key:'orders',label:'Doanh thu thực tế',icon:'orders'},
     {key:'products',label:'Sản phẩm',icon:'products'},
@@ -979,9 +1008,6 @@ const MENU = [
     {key:'koc_group',label:'Nhóm KOC',icon:'kocgroup'},
     {key:'campaigns',label:'Chiến dịch KOC',icon:'campaign'},
     {key:'bookings',label:'Booking',icon:'booking'},
-  ]},
-  {group:'MARKETING', items:[
-    {key:'ads',label:'Chi phí quảng cáo',icon:'marketing'},
   ]},
   {group:'BÁO CÁO', items:[
     {key:'reports',label:'Báo cáo',icon:'reports'},
@@ -1270,7 +1296,7 @@ function getOrderSourceName(id){
 function pageOrders(){
   const s = mainState.orders;
   s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.orders.some(o=>o.id===id)) : [];
-  const filters = {platformId:s.platformId==='all'?null:s.platformId, status:s.status, search:s.search};
+  const filters = {dateFrom:s.dateFrom,dateTo:s.dateTo,platformId:s.platformId==='all'?null:s.platformId, status:s.status, search:s.search};
   let list = filterOrders(state.orders, filters).sort((a,b)=> b.date.localeCompare(a.date));
   const total = list.length;
   const totalPages = Math.max(1,Math.ceil(total/s.pageSize));
@@ -1282,7 +1308,7 @@ function pageOrders(){
 
   return `
   <div class="page-title">Doanh thu thực tế</div>
-  <div class="page-sub">Nhập liệu doanh thu thực tế phát sinh từ các nguồn kinh doanh</div>
+  <div class="page-sub">Nhập liệu doanh thu thực tế phát sinh từ các nguồn kinh doanh</div>${detailDateControls('orders')}
   <div class="filter-row">
     <input class="input" placeholder="Tìm mã đơn, khách hàng, SKU..." value="${escapeHtml(s.search)}" oninput="setOrderFilter('search',this.value)" style="min-width:220px">
     <select class="select" onchange="setOrderFilter('status',this.value)">
@@ -1368,7 +1394,7 @@ function toggleOrderSelection(id,checked){
 }
 function getCurrentOrderPageIds(){
   const s=mainState.orders;
-  const filters={platformId:s.platformId==='all'?null:s.platformId,status:s.status,search:s.search};
+  const filters={dateFrom:s.dateFrom,dateTo:s.dateTo,platformId:s.platformId==='all'?null:s.platformId,status:s.status,search:s.search};
   const list=filterOrders(state.orders,filters).sort((a,b)=>b.date.localeCompare(a.date));
   const totalPages=Math.max(1,Math.ceil(list.length/s.pageSize));
   s.page=Math.min(s.page,totalPages);
@@ -1568,7 +1594,7 @@ function exportTableExcel(type){
     rows = computeKocMetrics({}).map(m=>({'KOC':m.koc.name,'Doanh thu':m.revenue,'Đơn':m.orderCount,'Hoa hồng':m.commission,'Tổng chi phí':m.totalCost,'Lợi nhuận':m.profit,'ROAS':m.roas.toFixed(2),'ROI %':m.roi.toFixed(1)}));
   } else if(type==='expenses'){
     filename='chi-phi';
-    rows = state.expenses.map(e=>({'Ngày':e.date,'Mã CT':e.docNo,'Loại':EXPENSE_TYPES.find(t=>t.id===e.type)?.name,'Số tiền':e.amount,'Ghi chú':e.note}));
+    rows = state.expenses.map(e=>({'Ngày':e.date,'Mã CT':e.docNo,'Loại':getExpenseTypes().find(t=>t.id===e.type)?.name,'Nội dung chi phí':e.content||'','Số tiền':e.amount,'Nguồn quỹ':state.cashAccounts.find(a=>a.id===e.cashAccountId)?.name||'Chưa liên kết','Ghi nhận quỹ':expensePostingLabel(e),'Đã trừ trực tiếp':e.cashPostedAmount||0,'Ghi chú':e.note}));
   }
   if(!rows.length){ toast('Không có dữ liệu để export','warning'); return; }
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -1769,6 +1795,47 @@ function pageRefunds(){
 }
 
 /* ========================================================
+   PAGE: ECOMMERCE BUSINESS PLANS
+   ======================================================== */
+mainState.businessPlans={selectedId:''};
+function selectedBusinessPlan(){ensureFinanceState();const s=mainState.businessPlans;let plan=state.businessPlans.find(p=>p.id===s.selectedId);if(!plan&&state.businessPlans.length){plan=state.businessPlans[0];s.selectedId=plan.id;}return plan||null;}
+function planBudget(p){return Number(p.adsBudget||0)+Number(p.kocBudget||0)+Number(p.inventoryBudget||0)+Number(p.otherBudget||0);}
+function planProgress(p){const items=[...(p.productPlans||[]),...(p.tasks||[])];if(!items.length)return 0;return Math.round(items.filter(x=>['done','active'].includes(x.status)).length/items.length*100);}
+function pageBusinessPlans(){
+  ensureFinanceState();const plan=selectedBusinessPlan();
+  if(!plan)return `<div class="page-title">Kế hoạch kinh doanh TMĐT</div><div class="page-sub">Lập mục tiêu, sản phẩm mới, ngân sách và lộ trình triển khai theo từng giai đoạn</div><div class="filter-row"><button class="btn btn-primary" onclick="openBusinessPlanModal()">${icon('plus',14)} Tạo kế hoạch đầu tiên</button></div>${emptyState('Chưa có kế hoạch kinh doanh nào','openBusinessPlanModal()','+ Tạo kế hoạch')}`;
+  const products=plan.productPlans||[],tasks=plan.tasks||[],progress=planProgress(plan),budget=planBudget(plan),actual=computeDashboard({dateFrom:plan.startDate,dateTo:plan.endDate,platformId:'all'});
+  const revenueProgress=Math.min(100,Math.round(safeDiv(actual.cur.netRevenue,Number(plan.targetRevenue||0))*100)),orderProgress=Math.min(100,Math.round(safeDiv(actual.cur.successOrders,Number(plan.targetOrders||0))*100)),profitProgress=Math.min(100,Math.round(safeDiv(actual.netProfitFinal,Number(plan.targetProfit||0))*100));
+  return `<div class="page-title">Kế hoạch kinh doanh TMĐT</div><div class="page-sub">Quản trị mục tiêu, danh mục sản phẩm mới và toàn bộ công việc triển khai</div>
+  <div class="filter-row"><select class="select" onchange="mainState.businessPlans.selectedId=this.value;render()">${state.businessPlans.map(p=>`<option value="${p.id}" ${p.id===plan.id?'selected':''}>${escapeHtml(p.name)} · ${fmtDate(p.startDate)}–${fmtDate(p.endDate)}</option>`).join('')}</select><button class="btn" onclick="openBusinessPlanModal()">${icon('plus',14)} Kế hoạch mới</button><button class="btn" onclick="openBusinessPlanModal('${plan.id}')">${icon('edit',14)} Sửa kế hoạch</button><button class="btn btn-danger" onclick="deleteBusinessPlan('${plan.id}')">${icon('trash',14)} Xóa</button></div>
+  <div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><div class="section-title" style="margin-bottom:5px">${escapeHtml(plan.name)}</div><div class="muted" style="font-size:12px">${fmtDate(plan.startDate)} – ${fmtDate(plan.endDate)} · <span class="badge ${plan.status==='completed'?'b-green':plan.status==='active'?'b-purple':'b-yellow'}">${PLAN_STATUS_LABEL[plan.status]||plan.status}</span></div></div><div style="min-width:220px"><div class="muted" style="font-size:11px">TIẾN ĐỘ TỔNG THỂ ${progress}%</div><div class="coverage-track"><span style="width:${progress}%"></span></div></div></div>${plan.objective?`<div class="insight-box" style="margin-top:12px">${icon('star',16)}<p><b>Mục tiêu chiến lược:</b> ${escapeHtml(plan.objective)}</p></div>`:''}</div>
+  <div class="grid grid-kpi" style="margin-bottom:16px">
+    ${kpiCard({title:'Doanh thu mục tiêu',value:Number(plan.targetRevenue||0),icon:'revenue',grad:'var(--grad-1)',change:0})}
+    ${kpiCard({title:'Lợi nhuận mục tiêu',value:Number(plan.targetProfit||0),icon:'profit',grad:'var(--grad-2)',change:0})}
+    ${kpiCard({title:'Số đơn mục tiêu',value:Number(plan.targetOrders||0),isCount:true,icon:'orders',grad:'var(--grad-2)',change:0})}
+    ${kpiCard({title:'Tổng ngân sách',value:budget,icon:'money',grad:'var(--grad-3)',change:0,invert:true})}
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="section-title">Kế hoạch so với thực tế</div><div class="grid grid-3"><div><div class="stat-line"><span>Doanh thu thực tế</span><b>${formatCurrency(actual.cur.netRevenue)}</b></div><div class="coverage-track"><span style="width:${revenueProgress}%"></span></div><div class="muted" style="font-size:11px;margin-top:5px">Đạt ${revenueProgress}% mục tiêu</div></div><div><div class="stat-line"><span>Đơn thành công</span><b>${formatNumber(actual.cur.successOrders)}</b></div><div class="coverage-track"><span style="width:${orderProgress}%"></span></div><div class="muted" style="font-size:11px;margin-top:5px">Đạt ${orderProgress}% mục tiêu</div></div><div><div class="stat-line"><span>Lợi nhuận thực tế</span><b>${formatCurrency(actual.netProfitFinal)}</b></div><div class="coverage-track"><span style="width:${profitProgress}%"></span></div><div class="muted" style="font-size:11px;margin-top:5px">Đạt ${profitProgress}% mục tiêu</div></div></div></div>
+  <div class="grid grid-2" style="margin-bottom:14px"><div class="card"><div class="section-title">Phân bổ ngân sách</div><div class="stat-line"><span>Quảng cáo</span><b>${formatCurrency(plan.adsBudget)}</b></div><div class="stat-line"><span>KOC / Affiliate</span><b>${formatCurrency(plan.kocBudget)}</b></div><div class="stat-line"><span>Nhập hàng / tồn kho</span><b>${formatCurrency(plan.inventoryBudget)}</b></div><div class="stat-line"><span>Ngân sách khác</span><b>${formatCurrency(plan.otherBudget)}</b></div></div><div class="card"><div class="section-title">Chỉ tiêu triển khai</div><div class="stat-line"><span>Sản phẩm mới dự kiến</span><b>${plan.targetNewProducts||0}</b></div><div class="stat-line"><span>Sản phẩm đã lên kế hoạch</span><b>${products.length}</b></div><div class="stat-line"><span>KOC mục tiêu</span><b>${plan.targetKocs||0}</b></div><div class="stat-line"><span>Đầu việc hoàn thành</span><b>${tasks.filter(t=>t.status==='done').length}/${tasks.length}</b></div></div></div>
+  <div class="card" style="margin-bottom:14px"><div class="section-title">Kế hoạch sản phẩm mới <button class="btn btn-sm" onclick="openPlanProductModal('${plan.id}')">${icon('plus',13)} Thêm sản phẩm</button></div>
+    ${products.length?`<div class="table-wrap"><table><thead><tr><th>Sản phẩm</th><th>Loại sản phẩm</th><th>Sàn chính</th><th>Ngày ra mắt</th><th>Giá bán</th><th>Giá vốn</th><th>Biên dự kiến</th><th>SL mục tiêu</th><th>Trạng thái</th><th></th></tr></thead><tbody>${products.map(x=>{const platform=x.platformId==='all'?{name:'Tất cả sàn'}:getPlatform(x.platformId),margin=safeDiv(Number(x.targetPrice)-Number(x.targetCost),Number(x.targetPrice))*100;return `<tr><td><b>${escapeHtml(x.name)}</b>${x.usp?`<div class="muted" style="font-size:11px;margin-top:3px">${escapeHtml(x.usp)}</div>`:''}</td><td>${escapeHtml(x.productType||'—')}</td><td>${platform?escapeHtml(platform.name):'—'}</td><td>${fmtDate(x.launchDate)}</td><td>${formatCurrency(x.targetPrice)}</td><td>${formatCurrency(x.targetCost)}</td><td style="color:${margin>=30?'var(--green)':margin>=10?'var(--yellow)':'var(--red)'}">${formatPct(margin)}</td><td>${formatNumber(x.targetQty)}</td><td><span class="badge ${x.status==='done'||x.status==='active'?'b-green':x.status==='blocked'?'b-red':'b-purple'}">${PLAN_ITEM_STATUS_LABEL[x.status]||x.status}</span></td><td><div class="row-actions"><button onclick="openPlanProductModal('${plan.id}','${x.id}')">${icon('edit',14)}</button><button onclick="deletePlanProduct('${plan.id}','${x.id}')">${icon('trash',14)}</button></div></td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty-state" style="padding:24px">Chưa có sản phẩm mới trong kế hoạch</div>'}
+  </div>
+  <div class="card"><div class="section-title">Lộ trình & công việc <button class="btn btn-sm" onclick="openPlanTaskModal('${plan.id}')">${icon('plus',13)} Thêm công việc</button></div>
+    ${tasks.length?`<div class="table-wrap"><table><thead><tr><th>Công việc</th><th>Nhóm</th><th>Phụ trách</th><th>Hạn hoàn thành</th><th>Ngân sách</th><th>Trạng thái</th><th></th></tr></thead><tbody>${tasks.slice().sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')).map(t=>`<tr><td><b>${escapeHtml(t.title)}</b>${t.note?`<div class="muted" style="font-size:11px;margin-top:3px">${escapeHtml(t.note)}</div>`:''}</td><td>${escapeHtml(t.area||'Khác')}</td><td>${escapeHtml(t.owner||'—')}</td><td style="color:${t.status!=='done'&&t.dueDate<todayISO()?'var(--red)':'inherit'}">${fmtDate(t.dueDate)}</td><td>${formatCurrency(t.budget)}</td><td><select class="select" onchange="updatePlanTaskStatus('${plan.id}','${t.id}',this.value)">${Object.entries(PLAN_ITEM_STATUS_LABEL).map(([k,v])=>`<option value="${k}" ${t.status===k?'selected':''}>${v}</option>`).join('')}</select></td><td><div class="row-actions"><button onclick="openPlanTaskModal('${plan.id}','${t.id}')">${icon('edit',14)}</button><button onclick="deletePlanTask('${plan.id}','${t.id}')">${icon('trash',14)}</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state" style="padding:24px">Chưa có công việc triển khai</div>'}
+  </div>`;
+}
+function openBusinessPlanModal(id){const p=id?state.businessPlans.find(x=>x.id===id):null;openModal({title:p?'Sửa kế hoạch kinh doanh':'Tạo kế hoạch kinh doanh',wide:true,bodyHtml:`<div class="form-row"><label>Tên kế hoạch *</label><input class="input" id="planName" value="${escapeHtml(p?.name||'')}" placeholder="Kế hoạch kinh doanh Quý IV/2026"></div><div class="form-grid2"><div class="form-row"><label>Từ ngày *</label><input class="input" type="date" id="planStart" value="${p?.startDate||todayISO()}"></div><div class="form-row"><label>Đến ngày *</label><input class="input" type="date" id="planEnd" value="${p?.endDate||addDays(todayISO(),90)}"></div><div class="form-row"><label>Trạng thái</label><select class="select" id="planStatus">${Object.entries(PLAN_STATUS_LABEL).map(([k,v])=>`<option value="${k}" ${p?.status===k?'selected':''}>${v}</option>`).join('')}</select></div><div class="form-row"><label>Số đơn mục tiêu</label><input class="input" type="number" min="0" id="planOrders" value="${p?.targetOrders||0}"></div><div class="form-row"><label>Doanh thu mục tiêu</label><input class="input" type="number" min="0" id="planRevenue" value="${p?.targetRevenue||0}"></div><div class="form-row"><label>Lợi nhuận mục tiêu</label><input class="input" type="number" min="0" id="planProfit" value="${p?.targetProfit||0}"></div><div class="form-row"><label>Sản phẩm mới mục tiêu</label><input class="input" type="number" min="0" id="planNewProducts" value="${p?.targetNewProducts||0}"></div><div class="form-row"><label>KOC mục tiêu</label><input class="input" type="number" min="0" id="planKocs" value="${p?.targetKocs||0}"></div><div class="form-row"><label>Ngân sách Ads</label><input class="input" type="number" min="0" id="planAdsBudget" value="${p?.adsBudget||0}"></div><div class="form-row"><label>Ngân sách KOC</label><input class="input" type="number" min="0" id="planKocBudget" value="${p?.kocBudget||0}"></div><div class="form-row"><label>Ngân sách nhập hàng</label><input class="input" type="number" min="0" id="planInventoryBudget" value="${p?.inventoryBudget||0}"></div><div class="form-row"><label>Ngân sách khác</label><input class="input" type="number" min="0" id="planOtherBudget" value="${p?.otherBudget||0}"></div></div><div class="form-row"><label>Mục tiêu chiến lược</label><textarea class="input" id="planObjective" placeholder="Thị trường, khách hàng mục tiêu, lợi thế cạnh tranh...">${escapeHtml(p?.objective||'')}</textarea></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitBusinessPlan('${id||''}')">Lưu kế hoạch</button>`});}
+function submitBusinessPlan(id){const old=id?state.businessPlans.find(x=>x.id===id):null,name=document.getElementById('planName').value.trim(),startDate=document.getElementById('planStart').value,endDate=document.getElementById('planEnd').value;if(!name||!startDate||!endDate||startDate>endDate){toast('Vui lòng nhập tên và thời gian kế hoạch hợp lệ','error');return;}const num=k=>Math.max(0,Number(document.getElementById(k).value||0));const obj={id:id||uid('plan'),name,startDate,endDate,status:document.getElementById('planStatus').value,objective:document.getElementById('planObjective').value.trim(),targetOrders:num('planOrders'),targetRevenue:num('planRevenue'),targetProfit:num('planProfit'),targetNewProducts:num('planNewProducts'),targetKocs:num('planKocs'),adsBudget:num('planAdsBudget'),kocBudget:num('planKocBudget'),inventoryBudget:num('planInventoryBudget'),otherBudget:num('planOtherBudget'),productPlans:old?.productPlans||[],tasks:old?.tasks||[],createdAt:old?.createdAt||new Date().toISOString()};state.businessPlans=id?state.businessPlans.map(x=>x.id===id?obj:x):[...state.businessPlans,obj];mainState.businessPlans.selectedId=obj.id;saveData();closeModal();render();toast('Đã lưu kế hoạch kinh doanh','success');}
+function deleteBusinessPlan(id){confirmAction('Xóa kế hoạch này cùng toàn bộ sản phẩm và công việc bên trong?',()=>{state.businessPlans=state.businessPlans.filter(x=>x.id!==id);mainState.businessPlans.selectedId='';saveData();render();toast('Đã xóa kế hoạch','success');});}
+function openPlanProductModal(planId,itemId){const p=state.businessPlans.find(x=>x.id===planId),x=itemId?p?.productPlans.find(i=>i.id===itemId):null;if(!p)return;openModal({title:x?'Sửa kế hoạch sản phẩm':'Thêm sản phẩm mới',wide:true,bodyHtml:`<div class="form-grid2"><div class="form-row"><label>Tên sản phẩm *</label><input class="input" id="ppName" value="${escapeHtml(x?.name||'')}"></div><div class="form-row"><label>Loại sản phẩm</label><input class="input" id="ppType" value="${escapeHtml(x?.productType||'')}" placeholder="Mỹ phẩm, gia dụng..."></div><div class="form-row"><label>Sàn chính</label><select class="select" id="ppPlatform"><option value="all">Tất cả sàn</option>${state.platforms.map(pl=>`<option value="${pl.id}" ${x?.platformId===pl.id?'selected':''}>${pl.name}</option>`).join('')}</select></div><div class="form-row"><label>Ngày dự kiến ra mắt *</label><input class="input" type="date" id="ppLaunch" value="${x?.launchDate||p.startDate}"></div><div class="form-row"><label>Giá bán dự kiến</label><input class="input" type="number" min="0" id="ppPrice" value="${x?.targetPrice||0}"></div><div class="form-row"><label>Giá vốn dự kiến</label><input class="input" type="number" min="0" id="ppCost" value="${x?.targetCost||0}"></div><div class="form-row"><label>Số lượng bán mục tiêu</label><input class="input" type="number" min="0" id="ppQty" value="${x?.targetQty||0}"></div><div class="form-row"><label>Trạng thái</label><select class="select" id="ppStatus">${Object.entries(PLAN_ITEM_STATUS_LABEL).map(([k,v])=>`<option value="${k}" ${x?.status===k?'selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-row"><label>USP / Điểm khác biệt sản phẩm</label><textarea class="input" id="ppUsp">${escapeHtml(x?.usp||'')}</textarea></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitPlanProduct('${planId}','${itemId||''}')">Lưu sản phẩm</button>`});}
+function submitPlanProduct(planId,itemId){const p=state.businessPlans.find(x=>x.id===planId),name=document.getElementById('ppName').value.trim(),launchDate=document.getElementById('ppLaunch').value;if(!p||!name||!launchDate){toast('Vui lòng nhập tên và ngày ra mắt','error');return;}const old=itemId?p.productPlans.find(x=>x.id===itemId):null,obj={id:itemId||uid('pp'),name,productType:document.getElementById('ppType').value.trim(),platformId:document.getElementById('ppPlatform').value,launchDate,targetPrice:Number(document.getElementById('ppPrice').value||0),targetCost:Number(document.getElementById('ppCost').value||0),targetQty:Number(document.getElementById('ppQty').value||0),status:document.getElementById('ppStatus').value,usp:document.getElementById('ppUsp').value.trim(),createdAt:old?.createdAt||new Date().toISOString()};p.productPlans=itemId?p.productPlans.map(x=>x.id===itemId?obj:x):[...p.productPlans,obj];saveData();closeModal();render();toast('Đã lưu kế hoạch sản phẩm','success');}
+function deletePlanProduct(planId,itemId){confirmAction('Xóa sản phẩm khỏi kế hoạch?',()=>{const p=state.businessPlans.find(x=>x.id===planId);if(!p)return;p.productPlans=p.productPlans.filter(x=>x.id!==itemId);saveData();render();});}
+function openPlanTaskModal(planId,itemId){const p=state.businessPlans.find(x=>x.id===planId),t=itemId?p?.tasks.find(i=>i.id===itemId):null;if(!p)return;openModal({title:t?'Sửa công việc':'Thêm công việc triển khai',bodyHtml:`<div class="form-row"><label>Tên công việc *</label><input class="input" id="ptTitle" value="${escapeHtml(t?.title||'')}"></div><div class="form-grid2"><div class="form-row"><label>Nhóm công việc</label><select class="select" id="ptArea">${['Sản phẩm','Nghiên cứu thị trường','Nhập hàng','Thiết kế gian hàng','Nội dung','Quảng cáo','KOC / Affiliate','Vận hành','Khác'].map(x=>`<option ${t?.area===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="form-row"><label>Người phụ trách</label><input class="input" id="ptOwner" value="${escapeHtml(t?.owner||'')}"></div><div class="form-row"><label>Hạn hoàn thành *</label><input class="input" type="date" id="ptDue" value="${t?.dueDate||p.startDate}"></div><div class="form-row"><label>Ngân sách</label><input class="input" type="number" min="0" id="ptBudget" value="${t?.budget||0}"></div><div class="form-row"><label>Trạng thái</label><select class="select" id="ptStatus">${Object.entries(PLAN_ITEM_STATUS_LABEL).map(([k,v])=>`<option value="${k}" ${t?.status===k?'selected':''}>${v}</option>`).join('')}</select></div></div><div class="form-row"><label>Ghi chú / Kết quả cần đạt</label><textarea class="input" id="ptNote">${escapeHtml(t?.note||'')}</textarea></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitPlanTask('${planId}','${itemId||''}')">Lưu công việc</button>`});}
+function submitPlanTask(planId,itemId){const p=state.businessPlans.find(x=>x.id===planId),title=document.getElementById('ptTitle').value.trim(),dueDate=document.getElementById('ptDue').value;if(!p||!title||!dueDate){toast('Vui lòng nhập tên và hạn hoàn thành','error');return;}const old=itemId?p.tasks.find(x=>x.id===itemId):null,obj={id:itemId||uid('task'),title,area:document.getElementById('ptArea').value,owner:document.getElementById('ptOwner').value.trim(),dueDate,budget:Number(document.getElementById('ptBudget').value||0),status:document.getElementById('ptStatus').value,note:document.getElementById('ptNote').value.trim(),createdAt:old?.createdAt||new Date().toISOString()};p.tasks=itemId?p.tasks.map(x=>x.id===itemId?obj:x):[...p.tasks,obj];saveData();closeModal();render();toast('Đã lưu công việc','success');}
+function updatePlanTaskStatus(planId,itemId,status){const p=state.businessPlans.find(x=>x.id===planId),t=p?.tasks.find(x=>x.id===itemId);if(!t)return;t.status=status;saveData();render();}
+function deletePlanTask(planId,itemId){confirmAction('Xóa công việc này?',()=>{const p=state.businessPlans.find(x=>x.id===planId);if(!p)return;p.tasks=p.tasks.filter(x=>x.id!==itemId);saveData();render();});}
+
+/* ========================================================
    PAGE: FINANCE OVERVIEW
    ======================================================== */
 mainState.finance = {preset:'30d'};
@@ -1806,40 +1873,73 @@ function treasuryMetricsForRange(range){
   const nearest=[...upcoming].sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''))[0]||null;
   return {cash,pending,upcoming,due,shortage,surplus,nearest,coverage:due?Math.min(100,Math.round(cash/due*100)):100};
 }
-function pageFinance(){
-  const s=mainState.finance; const range=dateRangeFor(s.preset);
-  const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
-  const d = computeDashboard(filters);
-  const settlement = computeSettlement(filters);
-  const treasury=treasuryMetrics(30);
-  return `<div class="page-title">Tổng quan tài chính</div><div class="page-sub">Bức tranh tài chính toàn diện của doanh nghiệp</div>
-  <div class="treasury-summary">
-    <div class="treasury-box"><div class="treasury-label">QUỸ HIỆN TẠI</div><div class="treasury-value">${formatCurrency(treasury.cash)}</div><div class="treasury-note">${state.cashAccounts.length} nguồn tiền đang theo dõi</div></div>
-    <div class="treasury-box"><div class="treasury-label">PHẢI CHI TRONG 30 NGÀY</div><div class="treasury-value">${formatCurrency(treasury.due)}</div><div class="treasury-note">${treasury.upcoming.length} khoản chờ thanh toán</div></div>
-    <div class="treasury-box ${treasury.shortage?'warning':'safe'}"><div class="treasury-label">${treasury.shortage?'SỐ TIỀN ĐANG THIẾU':'DƯ SAU KẾ HOẠCH CHI'}</div><div class="treasury-value" style="color:${treasury.shortage?'var(--red)':'var(--green)'}">${formatCurrency(treasury.shortage||treasury.surplus)}</div><div class="treasury-note">Quỹ đáp ứng ${treasury.coverage}% nghĩa vụ</div><div class="coverage-track"><span style="width:${treasury.coverage}%"></span></div></div>
-    <div class="treasury-box"><div class="treasury-label">KỲ HẠN GẦN NHẤT</div><div class="treasury-value" style="font-size:17px">${treasury.nearest?fmtDate(treasury.nearest.dueDate):'Không có'}</div><div class="treasury-note">${treasury.nearest?escapeHtml(treasury.nearest.name)+' · '+formatCurrency(treasury.nearest.amount):'Chưa có khoản phải trả'}</div><button class="btn btn-sm" style="margin-top:8px" onclick="navigate('treasury')">Xem kế hoạch chi</button></div>
-  </div>
-  <div class="filter-row">${[['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_quarter','Quý này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.finance.preset='${k}';render()">${l}</span>`).join('')}</div>
-  <div class="grid grid-kpi" style="margin-bottom:16px">
-    ${kpiCard({title:'Tổng doanh thu',value:d.cur.grossRevenue,icon:'revenue',grad:'var(--grad-1)',change:0})}
-    ${kpiCard({title:'Doanh thu thực nhận',value:d.cur.netReceived,icon:'income',grad:'var(--grad-2)',change:0})}
-    ${kpiCard({title:'Tổng giá vốn',value:d.cur.cogs,icon:'cogs',grad:'var(--grad-2)',change:0,invert:true})}
-    ${kpiCard({title:'Phí sàn',value:d.cur.platformFee,icon:'settlement',grad:'var(--grad-2)',change:0,invert:true})}
-    ${kpiCard({title:'Phí quản lý sàn',value:d.cur.managementFee,icon:'settlement',grad:'var(--grad-2)',change:0,invert:true})}
-    ${kpiCard({title:'Phí thanh toán',value:d.cur.paymentFee,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
-    ${kpiCard({title:'Phí vận chuyển',value:d.cur.shippingFee,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
-    ${kpiCard({title:'Hoa hồng KOC',value:d.cur.kocCommission,icon:'koc',grad:'var(--grad-1)',change:0,invert:true})}
-    ${kpiCard({title:'Quảng cáo',value:d.cur.adsCost,icon:'marketing',grad:'var(--grad-3)',change:0,invert:true})}
-    ${kpiCard({title:'Chi phí cố định',value:d.fixedCost,icon:'finance',grad:'var(--grad-2)',change:0,invert:true})}
-    ${kpiCard({title:'Chi phí khác',value:d.otherVarCost,icon:'expense',grad:'var(--grad-2)',change:0,invert:true})}
-    ${kpiCard({title:'Lợi nhuận gộp',value:d.cur.grossProfit,icon:'profit',grad:'var(--grad-1)',change:0})}
-    ${kpiCard({title:'Lợi nhuận ròng',value:d.netProfitFinal,icon:'profit',grad:'var(--grad-1)',change:0})}
-  </div>
-  <div class="card"><div class="section-title">Bảng đối soát tài chính</div>
-  <div class="table-wrap"><table><thead><tr><th>Sàn</th><th>Doanh thu</th><th>Phí sàn</th><th>Phí quản lý sàn</th><th>Phí thanh toán</th><th>Phí vận chuyển</th><th>Tiền phải nhận</th><th>Tiền thực nhận</th><th>Chênh lệch</th></tr></thead><tbody>
-  ${settlement.map(x=>`<tr><td><b>${x.platform.name}</b></td><td>${formatCurrency(x.revenue)}</td><td>${formatCurrency(x.platformFee)}</td><td>${formatCurrency(x.managementFee)}</td><td>${formatCurrency(x.paymentFee)}</td><td>${formatCurrency(x.shippingFee)}</td><td>${formatCurrency(x.shouldReceive)}</td><td>${formatCurrency(x.actualReceived)}</td><td style="color:${Math.abs(x.diff)<1000?'var(--green)':'var(--red)'}">${formatCurrency(x.diff)}</td></tr>`).join('')}
-  </tbody></table></div></div>`;
+function getExpenseTypes(){return [...EXPENSE_TYPES,...(Array.isArray(state.customExpenseTypes)?state.customExpenseTypes:[])].filter(t=>!(state.deletedExpenseTypeIds||[]).includes(t.id)).map(t=>({...t,name:state.expenseTypeNames?.[t.id]||t.name}));}
+function openExpenseTypeModal(){
+ openModal({title:'Thêm phân loại chi phí',bodyHtml:`<form id="expenseTypeForm"><div class="form-row"><label>Tên phân loại *</label><input class="input" name="name" maxlength="100" required placeholder="Ví dụ: Chi phí bảo hành"></div><div class="form-row"><label>Nhóm chi phí</label><select class="select" name="variable"><option value="false">Cố định</option><option value="true">Biến đổi</option></select></div><p class="muted">Phân loại sẽ xuất hiện khi nhập chi phí. Tổng quan tài chính cộng số tiền vào nhóm cố định hoặc biến đổi trong khoảng ngày đã chọn, không tạo ô riêng cho phân loại.</p></form>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="saveExpenseType()">Lưu phân loại</button>`});
 }
+function saveExpenseType(){
+ const f=document.getElementById('expenseTypeForm');if(!f.reportValidity())return;
+ const name=f.elements.name.value.trim();
+ if(!name||getExpenseTypes().some(t=>t.name.toLocaleLowerCase('vi')===name.toLocaleLowerCase('vi'))){toast('Tên phân loại trống hoặc đã tồn tại','error');return;}
+ if(!Array.isArray(state.customExpenseTypes))state.customExpenseTypes=[];
+ state.customExpenseTypes.push({id:uid('expense_type'),name,variable:f.elements.variable.value==='true'});
+ saveData();closeModal();render();toast('Đã thêm phân loại chi phí','success');
+}
+function uiDateRange(s){return s.preset==='custom'?{from:s.dateFrom||todayISO(),to:s.dateTo||todayISO()}:dateRangeFor(s.preset);}
+function periodControls(route){
+ const s=mainState[route],r=uiDateRange(s);
+ return `<div class="filter-row">${[['today','Hôm nay'],['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_quarter','Quý này'],['this_year','Năm nay'],['custom','Tùy chỉnh']].map(([k,label])=>`<button class="btn ${s.preset===k?'btn-primary':''}" onclick="setPeriodPreset('${route}','${k}')">${label}</button>`).join('')}</div>${s.preset==='custom'?`<div class="filter-row"><label>Từ ngày <input class="dateinput" type="date" id="periodFrom" value="${r.from}"></label><label>Đến ngày <input class="dateinput" type="date" id="periodTo" value="${r.to}"></label><button class="btn btn-primary" onclick="applyPeriod('${route}')">Áp dụng</button></div>`:''}<p class="muted">Đang xem: ${fmtDate(r.from)} – ${fmtDate(r.to)}</p>`;
+}
+function setPeriodPreset(route,preset){const s=mainState[route];if(preset==='custom'){const r=uiDateRange(s);s.dateFrom=r.from;s.dateTo=r.to;}s.preset=preset;render();}
+function applyPeriod(route){const from=document.getElementById('periodFrom').value,to=document.getElementById('periodTo').value;if(!from||!to||from>to){toast('Chọn đủ ngày; ngày bắt đầu không được sau ngày kết thúc','error');return;}Object.assign(mainState[route],{preset:'custom',dateFrom:from,dateTo:to});render();}
+function expenseCategoryTotals(range){
+ const sums=new Map(getExpenseTypes().map(t=>[t.id,0]));
+ filterExpenses(state.expenses,{dateFrom:range.from,dateTo:range.to}).forEach(e=>sums.set(e.type,(sums.get(e.type)||0)+Number(e.amount||0)));
+ const hidden=new Set(['ads','platform_fee','management_fee','payment_fee','shipping_fee','koc_commission']);
+ return [...sums].filter(([id])=>!hidden.has(id)).map(([id,amount])=>({id,amount,name:getExpenseTypes().find(t=>t.id===id)?.name||id})).sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+}
+function financeCard(title,value,target,type='',kind='',note='Xem chi tiết',money=true){
+ return `<button class="card finance-click" data-finance-target="${target}" data-expense-type="${escapeHtml(type)}" data-expense-kind="${kind}" onclick="openFinanceDetail(this.dataset.financeTarget,this.dataset.expenseType,this.dataset.expenseKind)"><span class="kpi-title">${escapeHtml(title)}</span><strong class="finance-value">${money?formatCurrency(value):escapeHtml(value)}</strong><span class="muted">${escapeHtml(note)} →</span></button>`;
+}
+function openFinanceDetail(target,type='',kind=''){
+ const r=uiDateRange(mainState.finance);
+ if(target==='expenses')Object.assign(mainState.expenses,{type:type||'all',costKind:kind||'all',fund:'all',dateFrom:r.from,dateTo:r.to});
+ if(target==='orders')Object.assign(mainState.orders,{dateFrom:r.from,dateTo:r.to,page:1,search:'',platformId:'all',status:'success',selected:[]});
+ if(target==='profit'||target==='settlement')Object.assign(mainState[target],{preset:'custom',dateFrom:r.from,dateTo:r.to});
+ if(target==='treasury')Object.assign(mainState.treasury,{horizon:'custom',from:r.from,to:r.to,status:'pending',type:'all'});
+ navigate(target);
+}
+function detailDateControls(route){
+ const s=mainState[route];
+ return `<div class="filter-row"><label>Từ ngày <input class="dateinput" type="date" id="detailFrom" value="${s.dateFrom||''}"></label><label>Đến ngày <input class="dateinput" type="date" id="detailTo" value="${s.dateTo||''}"></label><button class="btn" onclick="applyDetailDates('${route}')">Lọc ngày</button><button class="btn" onclick="mainState.${route}.dateFrom='';mainState.${route}.dateTo='';${route==='orders'?"mainState.orders.page=1;mainState.orders.selected=[];":''}render()">Toàn bộ ngày</button><button class="btn" onclick="navigate('finance')">Về tổng quan tài chính</button></div>`;
+}
+function applyDetailDates(route){const from=document.getElementById('detailFrom').value,to=document.getElementById('detailTo').value;if(from&&to&&from>to){toast('Ngày bắt đầu không được sau ngày kết thúc','error');return;}Object.assign(mainState[route],{dateFrom:from,dateTo:to});if(route==='orders'){mainState.orders.page=1;mainState.orders.selected=[];}render();}
+function pageFinance(){
+ const range=uiDateRange(mainState.finance),filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
+ const d=computeDashboard(filters),treasury=treasuryMetricsForRange(range),settlement=computeSettlement(filters);
+ const periodExpenses=filterExpenses(state.expenses,filters);
+ const adsTotal=periodExpenses.filter(e=>e.type==='ads').reduce((n,e)=>n+Number(e.amount||0),0);
+ const fixedTotal=periodExpenses.filter(e=>e.type!=='ads'&&!e.isVariable).reduce((n,e)=>n+Number(e.amount||0),0);
+ const variableTotal=periodExpenses.filter(e=>e.type!=='ads'&&e.isVariable).reduce((n,e)=>n+Number(e.amount||0),0);
+ return `<div class="page-title">Tổng quan tài chính</div><div class="page-sub">Chọn khoảng ngày và bấm vào từng chỉ số để kiểm tra dữ liệu chi tiết</div>${periodControls('finance')}
+ <div class="treasury-summary">
+ ${financeCard('Quỹ hiện tại',treasury.cash,'treasury','','','Số dư hiện tại · không phải số dư lịch sử')}
+ ${financeCard('Phải chi trong kỳ',treasury.due,'treasury','','',treasury.upcoming.length+' khoản chờ thanh toán')}
+ ${financeCard(treasury.shortage?'Thiếu so với khoản chờ chi':'Dư sau khoản chờ chi',treasury.shortage||treasury.surplus,'treasury','','','Tính từ số dư hiện tại và khoản chờ chi trong kỳ')}
+ ${financeCard('Hạn thanh toán gần nhất trong kỳ',treasury.nearest?fmtDate(treasury.nearest.dueDate):'Không có','treasury','','',treasury.nearest?.name||'Xem kế hoạch chi',false)}
+ </div><div class="grid grid-kpi" style="margin:16px 0">
+ ${financeCard('Tổng doanh thu',d.cur.grossRevenue,'orders')}
+ ${financeCard('Doanh thu thực nhận',d.cur.netReceived,'orders')}
+ ${financeCard('Tổng giá vốn',d.cur.cogs,'orders','','','Giá vốn từ đơn thành công')}
+ ${financeCard('Chi phí cố định',fixedTotal,'expenses','','fixed')}
+ ${financeCard('Chi phí biến đổi',variableTotal,'expenses','','variable','Không gồm quảng cáo · Xem chi tiết')}
+ ${financeCard('Chi phí quảng cáo',adsTotal,'expenses','ads')}
+ ${financeCard('Lợi nhuận gộp',d.cur.grossProfit,'profit')}
+ ${financeCard('Lợi nhuận ròng',d.netProfitFinal,'profit')}
+ </div>
+ <div class="card"><div class="section-title">Đối soát tài chính <button class="btn" onclick="openFinanceDetail('settlement')">Xem chi tiết đối soát</button></div><div class="table-wrap"><table><thead><tr><th>Sàn</th><th>Doanh thu</th><th>Tiền phải nhận</th><th>Tiền thực nhận</th><th>Chênh lệch</th><th></th></tr></thead><tbody>${settlement.map(x=>`<tr><td>${escapeHtml(x.platform.name)}</td><td>${formatCurrency(x.revenue)}</td><td>${formatCurrency(x.shouldReceive)}</td><td>${formatCurrency(x.actualReceived)}</td><td>${formatCurrency(x.diff)}</td><td><button class="btn btn-sm" onclick="openFinanceDetail('settlement')">Kiểm tra</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
 
 /* ========================================================
    PAGE: TREASURY / KẾ HOẠCH CHI & NỢ
@@ -1909,74 +2009,160 @@ function openCashAccountModal(id){
 function submitCashAccount(id){const name=document.getElementById('cashName').value.trim(),balance=Number(document.getElementById('cashBalance').value);if(!name||!Number.isFinite(balance)||balance<0){toast('Vui lòng nhập tên và số dư hợp lệ','error');return;}const obj={id:id||uid('cash'),name,type:document.getElementById('cashType').value,balance,note:document.getElementById('cashNote').value.trim(),updatedAt:new Date().toISOString()};state.cashAccounts=id?state.cashAccounts.map(x=>x.id===id?obj:x):[...state.cashAccounts,obj];saveData();closeModal();render();toast('Đã cập nhật quỹ','success');}
 function deleteCashAccount(id){
   const linkedRevenue=state.orders.some(o=>o.cashAccountId===id),linkedLoan=state.loans.some(l=>l.cashAccountId===id),linkedPayment=state.payables.some(p=>p.cashAccountId===id);
-  if(linkedRevenue||linkedLoan||linkedPayment){toast('Không thể xóa vì nguồn quỹ đã có giao dịch doanh thu, khoản vay hoặc thanh toán','warning');return;}
+  if(linkedRevenue||linkedLoan||linkedPayment||state.expenses.some(e=>e.cashAccountId===id)){toast('Không thể xóa vì nguồn quỹ đã có giao dịch doanh thu, chi phí, khoản vay hoặc thanh toán','warning');return;}
   confirmAction('Xóa nguồn quỹ này?',()=>{state.cashAccounts=state.cashAccounts.filter(x=>x.id!==id);saveData();render();toast('Đã xóa nguồn quỹ','success');});
 }
 function openPayableModal(id){
+  if(state.payables.some(p=>p.id===id&&p.status==='paid')){toast('Khoản đã thanh toán được khóa để bảo toàn số dư quỹ.','warning');return;}
   const p=id?state.payables.find(x=>x.id===id):null;
   openModal({title:p?'Sửa khoản phải trả':'Thêm khoản phải trả',wide:true,bodyHtml:`<div class="form-row"><label>Tên khoản phải trả *</label><input class="input" id="payableName" value="${escapeHtml(p?.name||'')}" placeholder="Trả gốc khoản vay tháng 10"></div><div class="form-grid2"><div class="form-row"><label>Loại nghĩa vụ *</label><select class="select" id="payableType">${Object.entries(PAYABLE_TYPES).map(([k,v])=>`<option value="${k}" ${p?.type===k?'selected':''}>${v}</option>`).join('')}</select></div><div class="form-row"><label>Số tiền *</label><input class="input" type="number" min="1" id="payableAmount" value="${p?.amount||''}"></div><div class="form-row"><label>Chủ nợ / Đối tác</label><input class="input" id="payableCreditor" value="${escapeHtml(p?.creditor||'')}"></div><div class="form-row"><label>Ngày dự kiến phải trả *</label><input class="input" type="date" id="payableDueDate" value="${p?.dueDate||todayISO()}"></div></div><div class="form-row"><label>Ghi chú</label><textarea class="input" id="payableNote">${escapeHtml(p?.note||'')}</textarea></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitPayable('${id||''}')">Lưu khoản phải trả</button>`});
 }
-function submitPayable(id){const old=id?state.payables.find(x=>x.id===id):null,name=document.getElementById('payableName').value.trim(),amount=Number(document.getElementById('payableAmount').value),dueDate=document.getElementById('payableDueDate').value;if(!name||amount<=0||!dueDate){toast('Vui lòng nhập tên, số tiền và ngày phải trả','error');return;}const obj={id:id||uid('pay'),name,type:document.getElementById('payableType').value,amount,creditor:document.getElementById('payableCreditor').value.trim(),dueDate,note:document.getElementById('payableNote').value.trim(),status:old?.status||'pending',paidDate:old?.paidDate||'',cashAccountId:old?.cashAccountId||'',createdAt:old?.createdAt||new Date().toISOString()};state.payables=id?state.payables.map(x=>x.id===id?obj:x):[...state.payables,obj];saveData();closeModal();render();toast('Đã lưu khoản phải trả','success');}
-function deletePayable(id){const p=state.payables.find(x=>x.id===id);if(p?.loanId){toast('Khoản này thuộc lịch vay vốn. Hãy dùng Hoàn tác khoản vay nếu nhập nhầm.','warning');return;}confirmAction('Xóa khoản phải trả này?',()=>{state.payables=state.payables.filter(x=>x.id!==id);saveData();render();toast('Đã xóa khoản phải trả','success');});}
+function submitPayable(id){if(state.payables.some(p=>p.id===id&&p.status==='paid')){toast('Không thể sửa khoản đã thanh toán','warning');return;}const old=id?state.payables.find(x=>x.id===id):null,name=document.getElementById('payableName').value.trim(),amount=Number(document.getElementById('payableAmount').value),dueDate=document.getElementById('payableDueDate').value;if(!name||amount<=0||!dueDate){toast('Vui lòng nhập tên, số tiền và ngày phải trả','error');return;}const obj={...old,id:id||uid('pay'),name,type:document.getElementById('payableType').value,amount,creditor:document.getElementById('payableCreditor').value.trim(),dueDate,note:document.getElementById('payableNote').value.trim(),status:old?.status||'pending',paidDate:old?.paidDate||'',cashAccountId:old?.cashAccountId||'',createdAt:old?.createdAt||new Date().toISOString()};state.payables=id?state.payables.map(x=>x.id===id?obj:x):[...state.payables,obj];saveData();closeModal();render();toast('Đã lưu khoản phải trả','success');}
+function deletePayable(id){const p=state.payables.find(x=>x.id===id);if(p?.status==='paid'){toast('Không thể xóa khoản đã thanh toán để bảo toàn lịch sử quỹ','warning');return;}if(p?.loanId){toast('Khoản này thuộc lịch vay vốn. Hãy dùng Hoàn tác khoản vay nếu nhập nhầm.','warning');return;}confirmAction('Xóa khoản phải trả này?',()=>{state.payables=state.payables.filter(x=>x.id!==id);saveData();render();toast('Đã xóa khoản phải trả','success');});}
 function openSettlePayableModal(id){const p=state.payables.find(x=>x.id===id);if(!p)return;openModal({title:'Xác nhận đã thanh toán',bodyHtml:`<div class="insight-box">${icon('info',16)}<p><b>${escapeHtml(p.name)}</b><br>Số tiền: ${formatCurrency(p.amount)}</p></div><div class="form-row"><label>Ngày thanh toán</label><input class="input" type="date" id="settleDate" value="${todayISO()}"></div><div class="form-row"><label>Trừ tiền từ nguồn quỹ</label><select class="select" id="settleCash"><option value="">Không trừ quỹ, chỉ đánh dấu đã trả</option>${state.cashAccounts.map(a=>`<option value="${a.id}">${escapeHtml(a.name)} · ${formatCurrency(a.balance)}</option>`).join('')}</select><div class="muted" style="font-size:11px;margin-top:5px">Nếu chọn nguồn quỹ, số dư sẽ giảm đúng bằng số tiền thanh toán.</div></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="settlePayable('${id}')">Xác nhận đã trả</button>`});}
-function settlePayable(id){const p=state.payables.find(x=>x.id===id),cashId=document.getElementById('settleCash').value;if(!p)return;if(cashId){const a=state.cashAccounts.find(x=>x.id===cashId);if(!a)return;if(Number(a.balance)<Number(p.amount)){toast('Nguồn quỹ không đủ để thanh toán khoản này','error');return;}a.balance=Number(a.balance)-Number(p.amount);a.updatedAt=new Date().toISOString();}p.status='paid';p.paidDate=document.getElementById('settleDate').value||todayISO();p.cashAccountId=cashId;saveData();closeModal();render();toast('Đã ghi nhận thanh toán','success');}
+function settlePayable(id){const p=state.payables.find(x=>x.id===id),cashId=document.getElementById('settleCash').value;if(!p||p.status==='paid')return;if(!Number.isFinite(Number(p.amount))||Number(p.amount)<=0){toast('Số tiền thanh toán không hợp lệ','error');return;}if(cashId){const a=state.cashAccounts.find(x=>x.id===cashId);if(!a)return;if(Number(a.balance)<Number(p.amount)){toast('Nguồn quỹ không đủ để thanh toán khoản này','error');return;}a.balance=Number(a.balance)-Number(p.amount);a.updatedAt=new Date().toISOString();}p.status='paid';p.paidDate=document.getElementById('settleDate').value||todayISO();p.cashAccountId=cashId;saveData();closeModal();render();toast('Đã ghi nhận thanh toán','success');}
 
 /* ========================================================
    PAGE: EXPENSES
    ======================================================== */
 mainState.expenses = {type:'all'};
+function expensePostingLabel(e){
+  return e.payableId?'Đã trừ ở kế hoạch chi':e.cashPostedAmount>0?'Đã trừ quỹ':e.cashAccountId?'Đã nằm trong số dư nhập tay':'Chưa liên kết quỹ';
+}
+function sharedFundCards(){
+  ensureFinanceState();
+  return `<div class="card" style="margin-bottom:16px"><div class="section-title">Số dư từng quỹ <button class="btn btn-sm" onclick="navigate('treasury')">Quản lý quỹ</button></div><p class="muted">Số dư hiện tại dùng chung với Doanh thu thực tế và Kế hoạch chi & nợ; không phụ thuộc bộ lọc chi phí.</p><div class="grid grid-3">${state.cashAccounts.map(a=>`<div class="fund-tile"><span>${escapeHtml(a.name)}</span><strong style="color:${Number(a.balance)<0?'var(--red)':'var(--green)'}">${formatCurrency(a.balance)}</strong><small class="muted">${escapeHtml(a.type||'Nguồn tiền')}</small></div>`).join('')||'<p class="muted">Chưa có quỹ. Vào Quản lý quỹ để nhập số dư ban đầu.</p>'}</div></div>`;
+}
 function pageExpenses(){
+  ensureFinanceState();
   const s=mainState.expenses;
-  let list = state.expenses.filter(e=>s.type==='all'||e.type===s.type).sort((a,b)=>b.date.localeCompare(a.date));
-  const total = list.reduce((sum,e)=>sum+e.amount,0);
-  return `<div class="page-title">Chi phí</div><div class="page-sub">Quản lý toàn bộ chi phí phát sinh trong kinh doanh</div>
-  <div class="filter-row">
-    <select class="select" onchange="mainState.expenses.type=this.value;render()">
-      <option value="all">Tất cả loại chi phí</option>
-      ${EXPENSE_TYPES.map(t=>`<option value="${t.id}" ${s.type===t.id?'selected':''}>${t.name}</option>`).join('')}
-    </select>
-    <button class="btn" onclick="exportTableExcel('expenses')">${icon('download',14)} Export</button>
-    <button class="btn btn-primary" style="margin-left:auto" onclick="openExpenseModal()">${icon('plus',14)} Thêm chi phí</button>
-  </div>
-  <div class="card" style="margin-bottom:14px"><div class="kpi-title">TỔNG CHI PHÍ</div><div class="kpi-value" style="font-size:24px">${formatCurrency(total)}</div></div>
-  ${!list.length? emptyState('Chưa có chi phí nào','openExpenseModal()','+ Thêm chi phí'):`
-  <div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Mã CT</th><th>Loại chi phí</th><th>Sàn</th><th>Số tiền</th><th>Ghi chú</th><th></th></tr></thead><tbody>
-  ${list.map(e=>{const t=EXPENSE_TYPES.find(x=>x.id===e.type); const pl=getPlatform(e.platformId);
-    return `<tr><td>${fmtDate(e.date)}</td><td>${e.docNo||'—'}</td><td><span class="badge ${t&&t.variable?'b-yellow':'b-purple'}">${t?t.name:e.type}</span></td><td>${pl?pl.name:'—'}</td><td>${formatCurrency(e.amount)}</td><td>${escapeHtml(e.note||'')}</td><td><div class="row-actions"><button onclick="openExpenseModal('${e.id}')">${icon('edit',14)}</button><button onclick="deleteExpense('${e.id}')">${icon('trash',14)}</button></div></td></tr>`}).join('')}
-  </tbody></table></div>`}
-  `;
+  const list=filterExpenses(state.expenses,{dateFrom:s.dateFrom,dateTo:s.dateTo}).filter(e=>(!s.costKind||s.costKind==='all'||(e.type!=='ads'&&(s.costKind==='fixed'?!e.isVariable:e.isVariable)))&&(s.type==='all'||e.type===s.type)&&(!s.fund||s.fund==='all'||(s.fund==='unassigned'?!e.cashAccountId:e.cashAccountId===s.fund))).sort((a,b)=>b.date.localeCompare(a.date));
+  const legacy=state.expenses.filter(e=>!e.cashAccountId).length;
+  return `<div class="page-title">Chi phí</div><div class="page-sub">Theo dõi chi phí và nguồn tiền thực chi trong cùng hệ thống quỹ</div>${sharedFundCards()}${detailDateControls('expenses')}
+  ${legacy?`<div class="insight-box"><p>${legacy} chi phí chưa liên kết quỹ. Dữ liệu cũ được giữ nguyên, chưa tự trừ tiền. Khi sửa, chọn cách ghi nhận phù hợp để tránh trừ hai lần.</p></div>`:''}
+  <div class="filter-row"><select class="select" aria-label="Lọc loại chi phí" onchange="mainState.expenses.type=this.value;mainState.expenses.costKind='all';render()"><option value="all">Tất cả loại chi phí</option>${getExpenseTypes().map(t=>`<option value="${t.id}" ${s.type===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}</select>
+  <select class="select" aria-label="Nhóm chi phí" onchange="mainState.expenses.costKind=this.value;render()"><option value="all">Cố định & biến đổi</option><option value="fixed" ${s.costKind==='fixed'?'selected':''}>Chi phí cố định</option><option value="variable" ${s.costKind==='variable'?'selected':''}>Biến đổi (không gồm quảng cáo)</option></select><button class="btn" onclick="openExpenseTypeModal()">+ Phân loại chi phí</button><select class="select" aria-label="Lọc nguồn quỹ" onchange="mainState.expenses.fund=this.value;render()"><option value="all">Tất cả quỹ</option><option value="unassigned" ${s.fund==='unassigned'?'selected':''}>Chưa liên kết</option>${state.cashAccounts.map(a=>`<option value="${a.id}" ${s.fund===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select><button class="btn" onclick="exportTableExcel('expenses')">Export toàn bộ</button><button class="btn btn-primary" onclick="openExpenseModal()">+ Thêm chi phí</button></div>
+  <div class="card" style="margin-bottom:14px"><div class="kpi-title">TỔNG CHI PHÍ THEO BỘ LỌC</div><div class="kpi-value">${formatCurrency(list.reduce((sum,e)=>sum+Number(e.amount||0),0))}</div></div>
+  ${!list.length?emptyState('Chưa có chi phí trong bộ lọc','openExpenseModal()','+ Thêm chi phí'):`<div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Mã CT</th><th>Nội dung chi phí</th><th>Loại chi phí</th><th>Sàn</th><th>Số tiền</th><th>Nguồn quỹ</th><th>Ghi nhận quỹ</th><th>Ghi chú</th><th></th></tr></thead><tbody>${list.map(e=>`<tr><td>${fmtDate(e.date)}</td><td>${escapeHtml(e.docNo||'—')}</td><td>${escapeHtml(e.content||'—')}</td><td>${escapeHtml(getExpenseTypes().find(t=>t.id===e.type)?.name||e.type)}</td><td>${escapeHtml(getPlatform(e.platformId)?.name||'—')}</td><td>${formatCurrency(e.amount)}</td><td>${escapeHtml(state.cashAccounts.find(a=>a.id===e.cashAccountId)?.name||'Chưa liên kết')}</td><td><span class="badge ${e.cashAccountId?'b-green':'b-yellow'}">${expensePostingLabel(e)}</span></td><td>${escapeHtml(e.note||'')}</td><td><div class="row-actions"><button title="Sửa chi phí" onclick="openExpenseModal('${e.id}')">${icon('edit',14)}</button><button title="Xóa chi phí" onclick="deleteExpense('${e.id}')">${icon('trash',14)}</button></div></td></tr>`).join('')}</tbody></table></div>`}`;
 }
 function openExpenseModal(id){
-  const editing = id? state.expenses.find(e=>e.id===id):null;
-  const e = editing || {id:null,date:todayISO(),docNo:'CT'+String(state.expenses.length+1000),type:'other',platformId:'',campaignId:'',kocId:'',productId:'',amount:0,note:''};
-  openModal({title:editing?'Sửa chi phí':'Thêm chi phí', bodyHtml:`
-  <form id="expenseForm">
-    <div class="form-grid2">
-      <div class="form-row"><label>Ngày *</label><input class="input" type="date" name="date" value="${e.date}" required></div>
-      <div class="form-row"><label>Mã chứng từ</label><input class="input" name="docNo" value="${escapeHtml(e.docNo||'')}"></div>
-      <div class="form-row"><label>Loại chi phí *</label><select class="select" name="type">${EXPENSE_TYPES.map(t=>`<option value="${t.id}" ${e.type===t.id?'selected':''}>${t.name}</option>`).join('')}</select></div>
-      <div class="form-row"><label>Sàn</label><select class="select" name="platformId"><option value="">—</option>${state.platforms.map(p=>`<option value="${p.id}" ${e.platformId===p.id?'selected':''}>${p.name}</option>`).join('')}</select></div>
-      <div class="form-row"><label>Campaign</label><select class="select" name="campaignId"><option value="">—</option>${state.campaigns.map(c=>`<option value="${c.id}" ${e.campaignId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
-      <div class="form-row"><label>KOC</label><select class="select" name="kocId"><option value="">—</option>${state.kocs.map(k=>`<option value="${k.id}" ${e.kocId===k.id?'selected':''}>${escapeHtml(k.name)}</option>`).join('')}</select></div>
-      <div class="form-row"><label>Sản phẩm</label><select class="select" name="productId"><option value="">—</option>${state.products.map(p=>`<option value="${p.id}" ${e.productId===p.id?'selected':''}>${p.sku}</option>`).join('')}</select></div>
-      <div class="form-row"><label>Số tiền *</label><input class="input" type="number" min="0" name="amount" value="${e.amount}" required></div>
-    </div>
-    <div class="form-row"><label>Ghi chú</label><textarea class="input" name="note">${escapeHtml(e.note||'')}</textarea></div>
-  </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitExpenseForm('${e.id||''}')">${icon('save',14)} Lưu</button>`});
+  ensureFinanceState();
+  const e=id?state.expenses.find(x=>x.id===id):{date:todayISO(),type:'other',amount:0};
+  if(!e)return;
+  const mode=e.payableId?'payable':e.cashPostedAmount>0?'direct':id?'historical':'direct';
+  openModal({title:id?'Sửa chi phí':'Thêm chi phí',wide:true,bodyHtml:`<form id="expenseForm"><div class="form-grid2">
+  <div class="form-row"><label>Ngày *</label><input class="input" type="date" name="date" value="${escapeHtml(e.date)}" required></div>
+  <div class="form-row"><label>Mã chứng từ</label><input class="input" name="docNo" value="${escapeHtml(e.docNo||'')}"></div>
+  <div class="form-row" style="grid-column:1/-1"><label>Nội dung chi phí</label><input class="input" name="content" maxlength="500" value="${escapeHtml(e.content||'')}" placeholder="Ví dụ: Chạy quảng cáo Shopee cho sản phẩm A"></div><div class="form-row"><label>Phân loại chi phí</label><select class="select" name="type" onchange="syncExpenseTypeEditor()">${getExpenseTypes().map(t=>`<option value="${t.id}" ${e.type===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}</select></div>
+  ${[['platformId','Sàn',state.platforms],['campaignId','Campaign',state.campaigns],['kocId','KOC',state.kocs],['productId','Sản phẩm',state.products]].map(([key,label,items])=>`<div class="form-row"><label>${label}</label><select class="select" name="${key}"><option value="">—</option>${items.map(x=>`<option value="${x.id}" ${e[key]===x.id?'selected':''}>${escapeHtml(x.name||x.sku)}</option>`).join('')}</select></div>`).join('')}
+  <div class="form-row"><label>Số tiền *</label><input class="input" type="number" min="1" step="1" name="amount" value="${e.amount}" required></div></div>
+  <details class="card" style="padding:12px;margin:10px 0 16px"><summary style="cursor:pointer">Thêm / sửa / xóa phân loại chi phí</summary><div class="form-row" style="margin-top:12px"><label>Đổi tên phân loại đang chọn</label><input class="input" id="renameExpenseType" maxlength="100"><button class="btn" type="button" style="margin-top:8px" onclick="renameInlineExpenseType()">Lưu tên phân loại</button></div><div class="form-grid2" style="margin-top:12px"><div class="form-row"><label>Tên phân loại mới</label><input class="input" id="inlineTypeName" maxlength="100" placeholder="Ví dụ: Chi phí bảo hành"></div><div class="form-row"><label>Nhóm</label><select class="select" id="inlineTypeVariable"><option value="false">Cố định</option><option value="true">Biến đổi</option></select></div></div><div class="filter-row"><button class="btn" type="button" onclick="addInlineExpenseType()">Thêm phân loại</button><button class="btn btn-danger" type="button" onclick="requestDeleteInlineExpenseType()">Xóa phân loại đang chọn</button></div><div id="confirmDeleteExpenseType" hidden><p id="deleteExpenseTypeMessage"></p><button type="button" class="btn btn-danger" onclick="deleteInlineExpenseType()">Xác nhận xóa phân loại</button><button type="button" class="btn" onclick="document.getElementById('confirmDeleteExpenseType').hidden=true">Giữ lại</button></div><p class="muted">Phân loại được lưu để nhập chi phí; số tiền được cộng vào nhóm tương ứng trên tổng quan, không tạo ô riêng. Chỉ xóa được phân loại chưa có giao dịch; nội dung chi phí đang nhập được giữ nguyên.</p></details>
+  <div class="form-row"><label>Cách ghi nhận tiền *</label><select class="select" name="postingMode" onchange="updateExpensePostingFields()">${[['direct','Trừ quỹ khi lưu chi phí'],['payable','Liên kết khoản đã thanh toán trong Kế hoạch chi & nợ'],['historical','Dữ liệu cũ / đã nằm trong số dư nhập tay — không trừ thêm']].map(([k,v])=>`<option value="${k}" ${mode===k?'selected':''}>${v}</option>`).join('')}</select></div>
+  <div class="form-row" id="expenseCashRow"><label>Nguồn quỹ chi</label><select class="select" name="cashAccountId"><option value="">— Chọn quỹ —</option>${state.cashAccounts.map(a=>`<option value="${a.id}" ${e.cashAccountId===a.id?'selected':''}>${escapeHtml(a.name)} · ${formatCurrency(a.balance)}</option>`).join('')}</select></div>
+  <div class="form-row" id="expensePayableRow"><label>Khoản đã thanh toán</label><select class="select" name="payableId"><option value="">— Chọn khoản chi —</option>${state.payables.filter(p=>p.status==='paid'&&p.cashAccountId&&p.type!=='loan_principal'&&!state.expenses.some(x=>x.id!==id&&x.payableId===p.id)).map(p=>`<option value="${p.id}" ${e.payableId===p.id?'selected':''}>${escapeHtml(p.name)} · ${formatCurrency(p.amount)} · ${escapeHtml(state.cashAccounts.find(a=>a.id===p.cashAccountId)?.name||'')}</option>`).join('')}</select></div>
+  <p class="muted" id="expensePostingHelp"></p><p class="muted">Sửa chi phí đã trừ sẽ hoàn số tiền cũ rồi ghi nhận số mới. Khoản liên kết kế hoạch chi phải bằng đúng số tiền đã thanh toán và chỉ được liên kết một lần.</p>
+  <div class="form-row"><label>Ghi chú</label><textarea class="input" name="note">${escapeHtml(e.note||'')}</textarea></div></form>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitExpenseForm('${id||''}')">Lưu chi phí</button>`});
+  updateExpensePostingFields();
+  syncExpenseTypeEditor();
+}
+
+function refreshInlineExpenseTypes(selected){
+ const select=document.getElementById('expenseForm').elements.type;
+ select.innerHTML=getExpenseTypes().map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+ if(getExpenseTypes().some(t=>t.id===selected))select.value=selected;
+ syncExpenseTypeEditor();
+}
+function syncExpenseTypeEditor(){
+ const form=document.getElementById('expenseForm');if(!form)return;
+ document.getElementById('confirmDeleteExpenseType').hidden=true;
+ document.getElementById('renameExpenseType').value=getExpenseTypes().find(t=>t.id===form.elements.type.value)?.name||'';
+}
+function renameInlineExpenseType(){
+ const form=document.getElementById('expenseForm'),id=form.elements.type.value;
+ const name=document.getElementById('renameExpenseType').value.trim();
+ if(!getExpenseTypes().some(t=>t.id===id)||!name||name.length>100){toast('Chọn phân loại và nhập tên hợp lệ','error');return;}
+ if(getExpenseTypes().some(t=>t.id!==id&&t.name.toLocaleLowerCase('vi')===name.toLocaleLowerCase('vi'))){toast('Tên phân loại đã tồn tại','error');return;}
+ if(!state.expenseTypeNames)state.expenseTypeNames={};
+ state.expenseTypeNames[id]=name;saveData();refreshInlineExpenseTypes(id);
+ toast('Đã đổi tên phân loại; các giao dịch liên kết được giữ nguyên','success');
+}
+function addInlineExpenseType(){
+ const input=document.getElementById('inlineTypeName'),name=input.value.trim();
+ if(!name||name.length>100||getExpenseTypes().some(t=>t.name.toLocaleLowerCase('vi')===name.toLocaleLowerCase('vi'))){toast('Nhập tên phân loại mới, không trùng tên đã có','error');return;}
+ if(!Array.isArray(state.customExpenseTypes))state.customExpenseTypes=[];
+ const type={id:uid('expense_type'),name,variable:document.getElementById('inlineTypeVariable').value==='true'};
+ state.customExpenseTypes.push(type);saveData();refreshInlineExpenseTypes(type.id);input.value='';toast('Đã thêm phân loại chi phí','success');
+}
+function requestDeleteInlineExpenseType(){
+ const id=document.getElementById('expenseForm').elements.type.value,t=getExpenseTypes().find(t=>t.id===id);
+ if(!t)return;
+ if(state.expenses.some(e=>e.type===id)){toast('Phân loại đã có giao dịch. Hãy chuyển các giao dịch sang phân loại khác trước khi xóa.','warning');return;}
+ const box=document.getElementById('confirmDeleteExpenseType');box.dataset.typeId=id;box.hidden=false;
+ document.getElementById('deleteExpenseTypeMessage').textContent='Xóa phân loại “'+t.name+'” khỏi danh sách và tổng quan?';
+}
+function deleteInlineExpenseType(){
+ const box=document.getElementById('confirmDeleteExpenseType'),id=box.dataset.typeId;
+ if(box.hidden||!getExpenseTypes().some(t=>t.id===id))return;
+ if(state.expenses.some(e=>e.type===id)){toast('Phân loại đã có giao dịch, không thể xóa','warning');return;}
+ if(!Array.isArray(state.deletedExpenseTypeIds))state.deletedExpenseTypeIds=[];
+ state.deletedExpenseTypeIds.push(id);saveData();refreshInlineExpenseTypes('other');
+ if(mainState.expenses.type===id)mainState.expenses.type='all';
+ toast('Đã xóa phân loại; nội dung đang nhập vẫn được giữ','success');
+}
+
+function updateExpensePostingFields(){
+  const form=document.getElementById('expenseForm'),mode=form.elements.postingMode.value;
+  document.getElementById('expenseCashRow').hidden=mode==='payable';
+  document.getElementById('expensePayableRow').hidden=mode!=='payable';
+  document.getElementById('expensePostingHelp').textContent=mode==='direct'?'Bắt buộc chọn quỹ đủ số dư. Tiền sẽ trừ ngay khi lưu.':mode==='payable'?'Lấy nguồn quỹ từ khoản thanh toán đã chọn; không trừ thêm tiền.':'Chỉ phân loại dữ liệu cũ. Chỉ dùng nếu khoản này đã được phản ánh trong số dư hiện tại, hoặc giữ chưa liên kết.';
+}
+// Validate every delta before mutating balances, including edits across two funds.
+function syncExpenseCashPosting(oldExpense,newExpense){
+  const deltas=new Map();
+  if(oldExpense?.cashPostedAmount>0){
+    if(!state.cashAccounts.some(a=>a.id===oldExpense.cashAccountId))throw Error('Không tìm thấy quỹ của chi phí cũ');
+    deltas.set(oldExpense.cashAccountId,Number(oldExpense.cashPostedAmount));
+  }
+  if(newExpense?.cashPostedAmount>0)deltas.set(newExpense.cashAccountId,(deltas.get(newExpense.cashAccountId)||0)-Number(newExpense.cashPostedAmount));
+  const changes=[...deltas].map(([id,delta])=>{
+    const account=state.cashAccounts.find(a=>a.id===id);
+    if(!account||!Number.isFinite(delta)||!Number.isFinite(Number(account.balance)))throw Error('Nguồn quỹ hoặc số dư không hợp lệ');
+    const balance=Number(account.balance)+delta;
+    if(delta<0&&balance<0)throw Error('Quỹ '+account.name+' không đủ số dư');
+    return {account,balance};
+  });
+  changes.forEach(({account,balance})=>{account.balance=balance;account.updatedAt=new Date().toISOString();});
 }
 function submitExpenseForm(id){
-  const fd = new FormData(document.getElementById('expenseForm'));
-  const amount = parseFloat(fd.get('amount'));
-  if(amount<0){ toast('Số tiền không được âm','error'); return; }
-  const typeDef = EXPENSE_TYPES.find(t=>t.id===fd.get('type'));
-  const data = {date:fd.get('date'),docNo:fd.get('docNo'),type:fd.get('type'),platformId:fd.get('platformId')||null,campaignId:fd.get('campaignId')||null,kocId:fd.get('kocId')||null,productId:fd.get('productId')||null,amount,note:fd.get('note'),isVariable:typeDef?typeDef.variable:false};
-  if(id){ Object.assign(state.expenses.find(e=>e.id===id), data); }
-  else { state.expenses.push(Object.assign({id:uid('exp')},data)); }
-  saveData(); closeModal(); render();
-  toast(id?'Cập nhật chi phí thành công':'Thêm chi phí thành công','success');
+  const form=document.getElementById('expenseForm');if(!form.reportValidity())return;
+  const fd=new FormData(form),amount=Number(fd.get('amount')),old=id?state.expenses.find(e=>e.id===id):null;
+  if(id&&!old){toast('Không tìm thấy chi phí','error');return;}
+  if(!Number.isFinite(amount)||amount<=0||!fd.get('date')){toast('Nhập ngày và số tiền lớn hơn 0','error');return;}
+  const mode=fd.get('postingMode');
+  const data={...old,id:id||uid('exp'),amount,cashAccountId:fd.get('cashAccountId')||'',cashPostedAmount:0,payableId:'',postingMode:mode};
+  for(const key of ['date','docNo','content','type','platformId','campaignId','kocId','productId','note'])data[key]=fd.get(key)||'';
+  if(!getExpenseTypes().some(t=>t.id===data.type)){toast('Vui lòng chọn phân loại chi phí hợp lệ','error');return;}
+  data.content=data.content.trim();
+  data.isVariable=getExpenseTypes().find(t=>t.id===data.type)?.variable||false;
+  if(!['direct','payable','historical'].includes(mode)){toast('Cách ghi nhận không hợp lệ','error');return;}
+  if(mode==='payable'){
+    const p=state.payables.find(x=>x.id===fd.get('payableId'));
+    if(!p||p.status!=='paid'||!p.cashAccountId||p.type==='loan_principal'||Number(p.amount)!==amount||state.expenses.some(x=>x.id!==id&&x.payableId===p.id)){toast('Chọn khoản đã trả hợp lệ, chưa liên kết và nhập đúng số tiền','error');return;}
+    data.cashAccountId=p.cashAccountId;data.payableId=p.id;
+  }
+  if((mode!=='historical'||data.cashAccountId)&&!state.cashAccounts.some(a=>a.id===data.cashAccountId)){toast('Vui lòng chọn nguồn quỹ hợp lệ trong Kế hoạch chi & nợ','error');return;}
+  if(mode==='direct')data.cashPostedAmount=amount;
+  try{syncExpenseCashPosting(old,data);}catch(err){toast(err.message,'error');return;}
+  if(old)Object.assign(old,data);else state.expenses.push(data);
+  saveData();closeModal();render();toast('Đã lưu chi phí và cập nhật quỹ','success');
 }
 function deleteExpense(id){
-  confirmAction('Xóa chi phí này?', ()=>{ state.expenses=state.expenses.filter(e=>e.id!==id); saveData(); render(); toast('Đã xóa chi phí','success'); });
+  const e=state.expenses.find(x=>x.id===id);if(!e)return;
+  confirmAction(e.cashPostedAmount>0?`Xóa chi phí và hoàn ${formatCurrency(e.cashPostedAmount)} về quỹ gốc?`:'Xóa chi phí này? Số dư quỹ không thay đổi; khoản thanh toán liên kết vẫn được giữ.',()=>{
+    const current=state.expenses.find(x=>x.id===id);if(!current)return;
+    try{syncExpenseCashPosting(current,null);}catch(err){toast(err.message,'error');return;}
+    state.expenses=state.expenses.filter(x=>x.id!==id);saveData();render();toast('Đã xóa chi phí','success');
+  });
 }
 
 /* ========================================================
@@ -1984,7 +2170,7 @@ function deleteExpense(id){
    ======================================================== */
 mainState.profit = {preset:'30d'};
 function pageProfit(){
-  const s=mainState.profit; const range=dateRangeFor(s.preset);
+  const s=mainState.profit; const range=uiDateRange(s);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const d = computeDashboard(filters);
   const cur=d.cur;
@@ -2006,7 +2192,7 @@ function pageProfit(){
   ];
   const margin = safeDiv(d.netProfitFinal, cur.netRevenue)*100;
   return `<div class="page-title">Lợi nhuận</div><div class="page-sub">Phân tích thác nước lợi nhuận theo công thức chuẩn</div>
-  <div class="filter-row">${[['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.profit.preset='${k}';render()">${l}</span>`).join('')}</div>
+  ${periodControls('profit')}
   <div class="two-col">
     <div class="card">
       ${steps.map(st=>`<div class="stat-line" style="${st.highlight?'background:rgba(139,92,246,0.08);border-radius:8px;padding:10px;margin:4px 0':''}"><span class="${st.bold?'':'muted'}" style="${st.bold?'font-weight:700':''}">${st.label}</span><b style="${st.highlight?'color:var(--green);font-size:15px':st.value<0?'color:var(--red)':''}">${formatCurrency(st.value)}</b></div>`).join('')}
@@ -2022,7 +2208,7 @@ function pageProfit(){
 }
 afterRenderHooks.profit = function(){
   chartDefaults(); destroyCharts();
-  const s=mainState.profit; const range=dateRangeFor(s.preset);
+  const s=mainState.profit; const range=uiDateRange(s);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const d = computeDashboard(filters);
   if(document.getElementById('chartProfitWaterfall'))
@@ -2034,11 +2220,11 @@ afterRenderHooks.profit = function(){
    ======================================================== */
 mainState.settlement = {preset:'this_month'};
 function pageSettlement(){
-  const s=mainState.settlement; const range=dateRangeFor(s.preset);
+  const s=mainState.settlement; const range=uiDateRange(s);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const settlement = computeSettlement(filters);
   return `<div class="page-title">Đối soát sàn</div><div class="page-sub">Kỳ đối soát: ${fmtDate(range.from)} - ${fmtDate(range.to)}</div>
-  <div class="filter-row">${[['this_month','Tháng này'],['last_month','Tháng trước'],['this_quarter','Quý này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.settlement.preset='${k}';render()">${l}</span>`).join('')}</div>
+  ${periodControls('settlement')}
   <div class="grid grid-2">
   ${settlement.map(x=>`<div class="card">
     <div class="section-title">${x.platform.name} ${Math.abs(x.diff)>1000?'<span class="badge b-red">⚠ Lệch</span>':'<span class="badge b-green">Khớp</span>'}</div>
@@ -2769,11 +2955,113 @@ function confirmClearAll(){
 }
 
 /* ---------------- PAGE MAP ---------------- */
+/* Organization is advisory planning data; assigning a person does not grant access. */
+const ORG_DEPARTMENTS=[
+ ['ceo','Ban điều hành','Giám đốc / COO','Chiến lược, mục tiêu lợi nhuận, ngân sách, hạn mức phê duyệt và giải quyết xung đột giữa các bộ phận.','Kế hoạch kinh doanh; ngân sách được duyệt; quyết định xử lý ngoại lệ.','Lợi nhuận; dòng tiền; tiến độ mục tiêu'],
+ ['buy','Mua hàng & ngành hàng','Trưởng mua hàng; chuyên viên ngành hàng','Chọn nhà cung cấp, đàm phán giá và điều khoản, lập danh mục SKU, dự báo nhu cầu và kế hoạch nhập hàng.','Đơn mua hàng; hồ sơ sản phẩm; giá vốn; lịch giao dự kiến.','Biên gộp; tỷ lệ thiếu hàng; hàng chậm luân chuyển'],
+ ['b2b','Kinh doanh bán sỉ','Trưởng kinh doanh; nhân viên đại lý / khách sỉ','Phát triển đại lý, báo giá theo bậc số lượng, quản lý hợp đồng, đơn sỉ và phối hợp kế toán kiểm tra hạn mức công nợ.','Báo giá được duyệt; đơn sỉ; điều khoản giao hàng và thanh toán.','Doanh số sỉ; khách mua lại; công nợ quá hạn'],
+ ['ecom','Kinh doanh & vận hành sàn','Trưởng sàn; nhân viên vận hành gian hàng','Quản lý gian hàng, giá bán lẻ, chương trình khuyến mại, danh mục sản phẩm; xác nhận đơn và phối hợp kho, chăm sóc khách hàng.','Đơn xác nhận; lịch khuyến mại; dữ liệu sản phẩm; báo cáo hiệu quả từng sàn.','Doanh thu thuần; tỷ lệ hủy; biên lợi nhuận theo sàn'],
+ ['mkt','Marketing, nội dung & KOC','Trưởng marketing; Ads; Content; thiết kế; KOC / livestream','Lập chiến dịch, sản xuất nội dung, quản lý quảng cáo, KOC và livestream; thống nhất giá, tồn kho và ngân sách trước khi chạy.','Brief; nội dung duyệt; lịch chạy; báo cáo ngân sách và hiệu quả.','Chi phí thu hút khách; hiệu quả quảng cáo; lợi nhuận chiến dịch'],
+ ['warehouse','Kho & giao nhận','Trưởng kho; thủ kho; đóng gói; điều phối vận chuyển','Nhập và kiểm đếm hàng, quản lý tồn theo SKU / lô, lấy hàng, đóng gói, bàn giao vận chuyển; kiểm hàng hoàn và đối chiếu chênh lệch.','Phiếu nhập / xuất; biên bản kiểm hàng; mã vận đơn; bằng chứng bàn giao.','Độ chính xác tồn; sai đơn; giao đúng hạn'],
+ ['cs','Chăm sóc khách hàng','Trưởng CSKH; tư vấn; xử lý đổi trả','Tư vấn trước bán, theo dõi giao hàng, xử lý khiếu nại và đổi trả; chuyển thông tin lỗi cho kho, ngành hàng và vận hành sàn.','Phiếu hỗ trợ; lý do hoàn; phương án được duyệt; xác nhận khách hàng.','Thời gian phản hồi; mức hài lòng; tỷ lệ xử lý đúng hẹn'],
+ ['finance','Tài chính & kế toán','Kế toán trưởng; kế toán công nợ / kho; thủ quỹ','Quản lý quỹ, thu chi, đối soát sàn, công nợ khách sỉ và nhà cung cấp; kiểm chứng từ và báo cáo tài chính quản trị.','Báo cáo quỹ; bảng đối soát; lịch thanh toán; chứng từ và báo cáo lợi nhuận.','Sai lệch đối soát; nợ quá hạn; độ đầy đủ chứng từ'],
+ ['people','Nhân sự & hành chính','Nhân sự; hành chính; phụ trách đào tạo','Tuyển dụng, phân công vai trò, hội nhập nhân viên, chấm công, phối hợp tính lương và quản lý tài sản, quy trình nội bộ.','Mô tả công việc; kế hoạch tuyển; hồ sơ nhân sự; lịch đào tạo.','Tuyển đúng hạn; hoàn thành đào tạo; chất lượng hồ sơ'],
+ ['it','IT & dữ liệu','Phụ trách hệ thống; phân tích dữ liệu','Vận hành công cụ, quản lý quyền truy cập, sao lưu, kết nối dữ liệu đơn / kho / tài chính; kiểm tra chất lượng dữ liệu và xử lý sự cố.','Báo cáo quản trị; bản sao lưu; danh sách quyền; nhật ký sự cố.','Độ sẵn sàng; độ chính xác dữ liệu; khôi phục thành công']
+];
+function organizationDefaults(){
+ const step=(from,to,title,deliverable,criteria,sla)=>({id:uid('step'),from,to,title,deliverable,criteria,sla});
+ return {departments:ORG_DEPARTMENTS.map(([id,name,roles,responsibilities,outputs,kpis])=>({id,name,roles,responsibilities,outputs,kpis,owner:'',backup:'',notes:''})),workflows:[
+ {id:'retail',name:'Đơn bán lẻ trên sàn',steps:[
+ step('ecom','warehouse','Xác nhận và chuyển đơn','Mã đơn, SKU, số lượng, địa chỉ, hạn bàn giao','Đơn hợp lệ, đủ hàng, giá và khuyến mại đã xác nhận','Trước giờ cắt đơn đã thống nhất'),
+ step('warehouse','cs','Đóng gói và bàn giao vận chuyển','Mã vận đơn, phiếu xuất, ảnh / biên bản bàn giao','Đúng SKU và số lượng; đơn vị vận chuyển đã nhận','Theo hạn bàn giao của từng đơn'),
+ step('cs','ecom','Theo dõi giao và xử lý ngoại lệ','Danh sách giao thành công, thất bại, khiếu nại','Mỗi ngoại lệ có người xử lý và hạn phản hồi','Rà soát mỗi ngày'),
+ step('ecom','finance','Đối soát và ghi nhận tiền thực nhận','Bảng đơn, phí, hoàn tiền, kỳ thanh toán của sàn','Khớp tiền về tài khoản; ghi nhận chênh lệch để xử lý','Theo kỳ đối soát từng sàn')]},
+ {id:'wholesale',name:'Đơn bán sỉ & công nợ',steps:[
+ step('b2b','finance','Duyệt điều kiện thanh toán','Báo giá, khách hàng, công nợ hiện tại, điều khoản','Đặt cọc hoặc hạn mức tín dụng được người có thẩm quyền duyệt','Trước xác nhận đơn'),
+ step('finance','b2b','Xác nhận cho phép giao','Xác nhận tiền / hạn mức và điều kiện giao','Bộ phận bán sỉ nhận xác nhận trước khi yêu cầu xuất','Trong thời hạn báo giá'),
+ step('b2b','warehouse','Xuất đơn sỉ','Đơn đã duyệt, SKU, số lượng, quy cách và lịch giao','Kho xác nhận tồn và lịch; khách xác nhận địa điểm nhận','Theo lịch giao hợp đồng'),
+ step('warehouse','finance','Bàn giao chứng từ giao hàng','Phiếu xuất, xác nhận nhận hàng, chênh lệch','Chứng từ đầy đủ để theo dõi khoản phải thu','Sau mỗi lần giao'),
+ step('finance','b2b','Phối hợp thu hồi công nợ','Danh sách đến hạn, số đã thu, số còn nợ','Khách có lịch trả; ngoại lệ chuyển điều hành duyệt','Rà soát hằng tuần')]},
+ {id:'purchase',name:'Nhập hàng & thanh toán NCC',steps:[
+ step('buy','ceo','Duyệt kế hoạch mua','Nhu cầu, tồn kho, dự báo, báo giá và ngân sách','Đạt biên lợi nhuận và hạn mức ngân sách nội bộ','Trước đặt hàng'),
+ step('ceo','buy','Phê duyệt đặt hàng','Ngân sách, nhà cung cấp và điều kiện được duyệt','Ghi rõ người duyệt và hạn mức','Theo lịch mua hàng'),
+ step('buy','warehouse','Nhận và kiểm hàng','Đơn mua, SKU, số lượng, tiêu chuẩn và lịch giao','Kho có thông tin kiểm hàng trước khi nhận','Trước ngày giao'),
+ step('warehouse','finance','Đề nghị thanh toán','Đơn mua, phiếu nhập, hóa đơn và biên bản chênh lệch','Khớp hàng thực nhận; xử lý chênh lệch trước trả','Theo hạn thanh toán'),
+ step('finance','buy','Xác nhận chi từ quỹ','Chứng từ chi, nguồn quỹ, số tiền và ngày trả','Ghi nhận một lần; công nợ nhà cung cấp được cập nhật','Sau thanh toán')]},
+ {id:'campaign',name:'Ra mắt sản phẩm & chiến dịch',steps:[
+ step('buy','mkt','Bàn giao sản phẩm','Đặc tính, khách mục tiêu, mẫu và bằng chứng cho nội dung','Đủ thông tin để làm brief và nội dung','Trước lịch sản xuất nội dung'),
+ step('mkt','ecom','Chốt nội dung, giá và chương trình','Lịch chạy, nội dung, SKU, ngân sách đề xuất','Giá và tồn sẵn sàng; ngân sách được duyệt','Trước khi chạy'),
+ step('ecom','warehouse','Chuẩn bị năng lực giao hàng','Dự báo đơn, combo, tồn cam kết','Kho xác nhận hàng và nhân lực','Trước mở bán'),
+ step('ecom','cs','Bàn giao hướng dẫn tư vấn','Giá, ưu đãi, thông tin sản phẩm và FAQ','CSKH nắm điều kiện và đầu mối xử lý','Trước mở bán'),
+ step('mkt','finance','Đánh giá và quyết toán','Chi thực tế, chứng từ, doanh thu và hiệu quả','Đối chiếu chi phí, tránh nhập trùng với chi đã ghi','Sau chiến dịch')]},
+ {id:'returns',name:'Đổi trả & khiếu nại',steps:[
+ step('cs','ecom','Xác minh yêu cầu','Mã đơn, lý do, ảnh, đề xuất xử lý','Đủ bằng chứng và điều kiện theo chính sách áp dụng','Theo thời hạn xử lý của đơn'),
+ step('ecom','warehouse','Tiếp nhận hàng hoàn','Mã yêu cầu, SKU, số lượng, tình trạng kỳ vọng','Hàng về đúng mã; có kiểm hàng và phân loại','Khi hàng về kho'),
+ step('warehouse','finance','Đối soát giá trị hoàn','Biên bản nhận, hàng bán lại / hỏng, khoản cần hoàn','Kho và CSKH xác nhận; người có thẩm quyền duyệt','Sau kiểm hàng'),
+ step('finance','cs','Xác nhận hoàn tiền và đóng yêu cầu','Chứng từ, số tiền và trạng thái xử lý','Không hoàn trùng; thông báo kết quả cho khách','Theo chính sách đã cam kết')]}
+ ]};
+}
+function ensureOrganizationState(){
+ if(!state.organization)state.organization=organizationDefaults();
+ if(!Array.isArray(state.organization.departments))state.organization.departments=organizationDefaults().departments;
+ if(!Array.isArray(state.organization.workflows))state.organization.workflows=organizationDefaults().workflows;
+}
+mainState.organization={tab:'map',workflow:'retail'};
+function orgDept(id){return state.organization.departments.find(d=>d.id===id);}
+function orgDepartmentCard(d,root=false){return `<div class="org-node ${root?'org-root':''}"><span class="badge ${d.owner?'b-green':'b-yellow'}">${d.owner?'Đã phân công':'Chưa phân công'}</span><h3>${escapeHtml(d.name)}</h3><p>${escapeHtml(d.roles)}</p><div class="org-owner">${escapeHtml(d.owner||'Chưa có người phụ trách')}</div><button class="btn btn-sm" onclick="openDepartmentModal('${d.id}')">${d.owner?'Sửa phân công':'Điền người phụ trách'}</button></div>`;}
+function pageOrganization(){
+ ensureOrganizationState();const org=state.organization,s=mainState.organization;
+ const assigned=org.departments.filter(d=>d.owner).length;
+ const tabs=[['map','Mindmap bộ máy'],['departments','Phòng ban & trách nhiệm'],['workflows','Quy trình phối hợp']];
+ let body='';
+ if(s.tab==='map'){
+ const root=org.departments.find(d=>d.id==='ceo');
+ body=`<div class="org-map" aria-label="Sơ đồ tổ chức công ty">${root?orgDepartmentCard(root,true):''}<div class="org-branches">${org.departments.filter(d=>d.id!=='ceo').map(d=>orgDepartmentCard(d)).join('')}</div></div>`;
+ }else if(s.tab==='departments'){
+ body=`<div class="grid grid-2">${org.departments.map(d=>`<article class="card org-detail"><div class="section-title">${escapeHtml(d.name)}<button class="btn btn-sm" onclick="openDepartmentModal('${d.id}')">Sửa</button></div><p><b>Phụ trách:</b> ${escapeHtml(d.owner||'Chưa phân công')} · <b>Dự phòng:</b> ${escapeHtml(d.backup||'Chưa phân công')}</p>${[['Vị trí trong bộ phận',d.roles],['Trách nhiệm',d.responsibilities],['Đầu ra bàn giao',d.outputs],['Chỉ số theo dõi',d.kpis],['Ghi chú / kiêm nhiệm',d.notes]].map(([label,value])=>`<div class="org-copy"><b>${label}</b><p>${escapeHtml(value||'—')}</p></div>`).join('')}</article>`).join('')}</div>`;
+ }else{
+ const w=org.workflows.find(w=>w.id===s.workflow)||org.workflows[0];
+ body=`<div class="filter-row"><select class="select" aria-label="Chọn quy trình" onchange="mainState.organization.workflow=this.value;render()">${org.workflows.map(x=>`<option value="${x.id}" ${x.id===w?.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</select><button class="btn" onclick="openWorkflowModal()">+ Quy trình</button>${w?`<button class="btn" onclick="openWorkflowModal('${w.id}')">Đổi tên</button><button class="btn btn-primary" onclick="openHandoffModal('${w.id}')">+ Bước bàn giao</button>`:''}</div><p class="muted">Đây là quy trình mẫu để phân công và thống nhất cách làm, không tự chuyển đơn hay gửi thông báo. Thời hạn là gợi ý nội bộ; hãy chỉnh theo hợp đồng và quy định sàn của bạn.</p>
+ ${w?`<div class="workflow-strip">${w.steps.map((x,i)=>`<div><b>${i+1}. ${escapeHtml(x.title)}</b><span>${escapeHtml(orgDept(x.from)?.name||'—')} → ${escapeHtml(orgDept(x.to)?.name||'—')}</span></div>`).join('')}</div><div class="handoff-list">${w.steps.map((x,i)=>`<article class="card org-detail"><div class="section-title">${i+1}. ${escapeHtml(x.title)}<div class="row-actions"><button aria-label="Đưa bước lên" ${i===0?'disabled':''} onclick="moveHandoff('${w.id}','${x.id}',-1)">↑</button><button aria-label="Đưa bước xuống" ${i===w.steps.length-1?'disabled':''} onclick="moveHandoff('${w.id}','${x.id}',1)">↓</button><button class="btn btn-sm" onclick="openHandoffModal('${w.id}','${x.id}')">Sửa</button><button class="btn btn-sm" onclick="deleteHandoff('${w.id}','${x.id}')">Xóa</button></div></div><div class="handoff-parties"><div><small>BÊN GIAO</small><b>${escapeHtml(orgDept(x.from)?.name||'—')}</b><span>${escapeHtml(orgDept(x.from)?.owner||'Chưa phân công')}</span></div><span class="handoff-arrow">→</span><div><small>BÊN NHẬN</small><b>${escapeHtml(orgDept(x.to)?.name||'—')}</b><span>${escapeHtml(orgDept(x.to)?.owner||'Chưa phân công')}</span></div></div>${[['Hồ sơ / kết quả phải giao',x.deliverable],['Điều kiện nghiệm thu',x.criteria],['Thời hạn phối hợp',x.sla]].map(([label,value])=>`<div class="org-copy"><b>${label}</b><p>${escapeHtml(value||'—')}</p></div>`).join('')}</article>`).join('')||'<div class="card">Chưa có bước bàn giao. Thêm bước để bắt đầu.</div>'}</div>`:''}`;
+ }
+ return `<div class="page-title">Bộ máy & phối hợp</div><div class="page-sub">Mô hình đề xuất cho công ty phân phối bán sỉ và bán lẻ trên sàn thương mại điện tử</div><div class="org-summary"><div><strong>${org.departments.length}</strong><span>Ban / bộ phận</span></div><div><strong>${assigned}/${org.departments.length}</strong><span>Đã có phụ trách</span></div><div><strong>${org.workflows.length}</strong><span>Quy trình phối hợp</span></div></div><div class="insight-box"><p>Công ty nhỏ có thể kiêm nhiệm nhiều vai trò. Vẫn nên phân biệt người đề nghị chi, người phê duyệt và người đối chiếu. Phân công tại đây là thông tin quản lý, không cấp quyền truy cập ứng dụng.</p></div><div class="filter-row">${tabs.map(([key,label])=>`<button class="btn ${s.tab===key?'btn-primary':''}" onclick="mainState.organization.tab='${key}';render()">${label}</button>`).join('')}<button class="btn" onclick="openDepartmentModal()">+ Bộ phận</button></div>${body}<p class="muted" style="margin-top:20px">Mô hình do ứng dụng đề xuất; chuỗi xử lý đơn, kho, giao hàng và đổi trả tham khảo <a href="https://help.shopify.com/en/manual/fulfillment" target="_blank" rel="noopener noreferrer">Shopify Help Center</a>. Có thể điều chỉnh theo quy mô thực tế.</p>`;
+}
+function openDepartmentModal(id){
+ const d=id?orgDept(id):{};if(!d)return;
+ openModal({title:id?'Phân công & trách nhiệm':'Thêm bộ phận',wide:true,bodyHtml:`<form id="departmentForm"><div class="form-grid2">${[['name','Tên bộ phận *'],['owner','Người phụ trách'],['backup','Người dự phòng / phối hợp'],['roles','Các vị trí trong bộ phận']].map(([key,label])=>`<div class="form-row"><label>${label}</label><input class="input" name="${key}" value="${escapeHtml(d[key]||'')}" ${key==='name'?'required':''} ${['owner','backup'].includes(key)?'list="orgEmployees"':''}></div>`).join('')}</div><datalist id="orgEmployees">${(state.employees||[]).map(e=>`<option value="${escapeHtml(e.name)}"></option>`).join('')}</datalist>${[['responsibilities','Trách nhiệm'],['outputs','Đầu ra bàn giao'],['kpis','Chỉ số theo dõi'],['notes','Ghi chú / kiêm nhiệm']].map(([key,label])=>`<div class="form-row"><label>${label}</label><textarea class="input" name="${key}" rows="3">${escapeHtml(d[key]||'')}</textarea></div>`).join('')}</form>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="saveDepartment('${id||''}')">Lưu phân công</button>`});
+}
+function saveDepartment(id){
+ const form=document.getElementById('departmentForm');if(!form.reportValidity())return;
+ const data=Object.fromEntries(new FormData(form));Object.keys(data).forEach(k=>data[k]=data[k].trim());
+ if(!data.name){toast('Vui lòng nhập tên bộ phận','error');return;}
+ if(id){const d=orgDept(id);if(!d)return;Object.assign(d,data);}else state.organization.departments.push({id:uid('dept'),...data});
+ saveData();closeModal();render();toast('Đã lưu phân công; người phụ trách trong quy trình được cập nhật','success');
+}
+function openWorkflowModal(id){
+ const w=state.organization.workflows.find(x=>x.id===id);
+ openModal({title:w?'Đổi tên quy trình':'Thêm quy trình',bodyHtml:`<div class="form-row"><label>Tên quy trình *</label><input class="input" id="workflowName" value="${escapeHtml(w?.name||'')}"></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="saveWorkflow('${id||''}')">Lưu</button>`});
+}
+function saveWorkflow(id){const name=document.getElementById('workflowName').value.trim();if(!name){toast('Nhập tên quy trình','error');return;}const w=state.organization.workflows.find(x=>x.id===id);if(w)w.name=name;else{const obj={id:uid('workflow'),name,steps:[]};state.organization.workflows.push(obj);mainState.organization.workflow=obj.id;}mainState.organization.tab='workflows';saveData();closeModal();render();}
+function openHandoffModal(workflowId,id){
+ const w=state.organization.workflows.find(x=>x.id===workflowId);if(!w)return;
+ const x=w.steps.find(x=>x.id===id)||{};
+ openModal({title:id?'Sửa bước bàn giao':'Thêm bước bàn giao',wide:true,bodyHtml:`<form id="handoffForm"><div class="form-row"><label>Tên bước *</label><input class="input" name="title" value="${escapeHtml(x.title||'')}" required></div><div class="form-grid2">${[['from','Bộ phận giao'],['to','Bộ phận nhận']].map(([key,label])=>`<div class="form-row"><label>${label} *</label><select class="select" name="${key}" required><option value="">— Chọn —</option>${state.organization.departments.map(d=>`<option value="${d.id}" ${x[key]===d.id?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}</select></div>`).join('')}</div>${[['deliverable','Hồ sơ / kết quả phải giao'],['criteria','Điều kiện nghiệm thu'],['sla','Thời hạn phối hợp']].map(([key,label])=>`<div class="form-row"><label>${label} *</label><textarea class="input" name="${key}" required>${escapeHtml(x[key]||'')}</textarea></div>`).join('')}<p class="muted">Người giao và nhận lấy từ phụ trách phòng ban. Khi có thiếu sót, bên nhận phản hồi rõ hồ sơ thiếu; ngoại lệ vượt thẩm quyền chuyển Ban điều hành.</p></form>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="saveHandoff('${workflowId}','${id||''}')">Lưu bước</button>`});
+}
+function saveHandoff(workflowId,id){
+ const form=document.getElementById('handoffForm');if(!form.reportValidity())return;
+ const data=Object.fromEntries(new FormData(form));Object.keys(data).forEach(k=>data[k]=data[k].trim());
+ if(Object.values(data).some(v=>!v)||!orgDept(data.from)||!orgDept(data.to)){toast('Nhập đủ thông tin và bộ phận hợp lệ','error');return;}
+ const w=state.organization.workflows.find(x=>x.id===workflowId);if(!w)return;
+ if(id){const step=w.steps.find(x=>x.id===id);if(!step)return;Object.assign(step,data);}else w.steps.push({id:uid('step'),...data});saveData();closeModal();render();toast('Đã lưu bước bàn giao','success');
+}
+function moveHandoff(workflowId,id,delta){const w=state.organization.workflows.find(x=>x.id===workflowId);if(!w)return;const i=w.steps.findIndex(x=>x.id===id),j=i+delta;if(i<0||j<0||j>=w.steps.length)return;[w.steps[i],w.steps[j]]=[w.steps[j],w.steps[i]];saveData();render();}
+function deleteHandoff(workflowId,id){confirmAction('Xóa bước bàn giao này khỏi quy trình?',()=>{const w=state.organization.workflows.find(x=>x.id===workflowId);if(!w)return;w.steps=w.steps.filter(x=>x.id!==id);saveData();render();});}
+
 const PAGES = {
-  dashboard:pageDashboard, orders:pageOrders, products:pageProducts, revenue:pageRevenue, refunds:pageRefunds,
+  organization:pageOrganization, dashboard:pageDashboard, business_plans:pageBusinessPlans, orders:pageOrders, products:pageProducts, revenue:pageRevenue, refunds:pageRefunds,
   finance:pageFinance, treasury:pageTreasury, expenses:pageExpenses, profit:pageProfit, settlement:pageSettlement, cashflow:pageCashflow, breakeven:pageBreakeven,
   koc_overview:pageKocOverview, koc_list:pageKocList, koc_group:pageKocGroup, campaigns:pageCampaigns, bookings:pageBookings,
-  ads:pageAds, reports:pageReports, settings:pageSettings,
+  reports:pageReports, settings:pageSettings,
 };
 
 /* ---------------- INIT ---------------- */
