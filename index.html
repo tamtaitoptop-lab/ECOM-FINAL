@@ -243,6 +243,9 @@ hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
 @media(max-width:600px){.org-branches>.org-node:nth-last-child(-n+3):before{height:calc(100% + 26px)}.org-branches>.org-node:last-child:before{height:calc(50% + 26px)}}
 
 .finance-click{display:flex;flex-direction:column;gap:14px;text-align:left;color:var(--text);font:inherit;cursor:pointer;width:100%;min-width:0;transition:border-color .15s,background .15s}.finance-click:hover{background:var(--card-hover);border-color:var(--purple)}.finance-click:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}.finance-value{font-size:24px;overflow-wrap:anywhere}.finance-click .muted{font-size:12px}.finance-click .kpi-title{white-space:normal}.filter-row label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+.map-scroll{overflow:auto;height:620px;border:1px solid var(--border);border-radius:12px;background:radial-gradient(#303453 1px,transparent 1px);background-size:20px 20px}.map-surface{position:relative;width:2600px;height:2000px}.map-edges{position:absolute;inset:0;pointer-events:none}.map-edges>path{stroke:#a78bfa;stroke-width:4;fill:none;pointer-events:stroke;cursor:pointer}.map-edges>path:hover{stroke:#22d3ee;stroke-width:7}.map-node{position:absolute;width:270px;height:160px;background:#151b34;border:1px solid #675094;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px #0005}.map-drag{background:#ffffff08;border:0;color:var(--muted);cursor:grab;border-radius:6px;touch-action:none;text-align:left;padding:7px}.map-title{border:0;background:none;color:var(--text);font:inherit;font-weight:700;text-align:left;cursor:pointer;padding:0;overflow:hidden}.map-title:hover{color:var(--cyan)}.map-node>.muted{font-size:12px;overflow:hidden}.map-port{position:absolute;right:-13px;top:66px;width:26px;height:26px;border:2px solid var(--cyan);border-radius:50%;background:#163342;color:var(--cyan);cursor:crosshair;touch-action:none;padding:0}.workflow-edit label{display:flex;flex-direction:column;gap:6px;margin:14px 0}.workflow-edit .form-grid2{gap:12px}.workflow-handle{cursor:grab;touch-action:none}.workflow-edit.drop-target{outline:3px solid var(--cyan)}.workflow-edit textarea{resize:vertical}.map-surface:focus-visible{outline:2px solid var(--cyan)}
+
 </style>
 </head>
 <body>
@@ -1628,12 +1631,13 @@ function pageProducts(){
     if(s.search){ const q=s.search.toLowerCase(); if(!(m.product.name.toLowerCase().includes(q)||m.product.sku.toLowerCase().includes(q))) return false; }
     return true;
   });
+  s.selected=selectedProductIds();
   return `
   <div class="page-title">Sản phẩm</div>
   <div class="page-sub">Quản lý danh mục sản phẩm và hiệu quả kinh doanh</div>
   <div class="filter-row">
-    <input class="input" placeholder="Tìm SKU, tên sản phẩm..." value="${escapeHtml(s.search)}" oninput="mainState.products.search=this.value;render()">
-    <select class="select" onchange="mainState.products.category=this.value;render()">
+    <input class="input" placeholder="Tìm SKU, tên sản phẩm..." value="${escapeHtml(s.search)}" oninput="mainState.products.search=this.value;mainState.products.selected=[];render()">
+    <select class="select" onchange="mainState.products.category=this.value;mainState.products.selected=[];render()">
       <option value="all">Tất cả danh mục</option>
       ${state.categories.map(c=>`<option value="${c.id}" ${s.category===c.id?'selected':''}>${c.name}</option>`).join('')}
     </select>
@@ -1643,14 +1647,15 @@ function pageProducts(){
     <button class="btn" onclick="exportTableExcel('products')">${icon('download',14)} Export</button>
     <button class="btn btn-primary" style="margin-left:auto" onclick="openProductModal()">${icon('plus',14)} Thêm sản phẩm</button>
   </div>
+  <div class="filter-row"><b>Đã chọn ${s.selected.length} sản phẩm</b><select class="select" id="productBulkAction" aria-label="Thao tác hàng loạt"><option value="active">Chuyển Hoạt động</option><option value="inactive">Chuyển Ngừng bán</option><option value="category">Đổi danh mục</option><option value="delete">Xóa sản phẩm chưa có liên kết</option></select><select class="select" id="productBulkCategory" aria-label="Danh mục đích"><option value="">Chọn danh mục đích</option>${state.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select><button class="btn" ${s.selected.length?'':'disabled'} onclick="applyProductBulk()">Áp dụng cho mục đã chọn</button><button class="btn" onclick="mainState.products.selected=[];render()">Bỏ chọn</button></div>
   ${!list.length? emptyState('Chưa có sản phẩm nào','openProductModal()','+ Thêm sản phẩm') : `
   <div class="table-wrap"><table>
-    <thead><tr><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
+    <thead><tr><th><input type="checkbox" aria-label="Chọn tất cả sản phẩm trong bộ lọc" ${list.length&&list.every(m=>s.selected.includes(m.product.id))?'checked':''} onchange="toggleAllProducts(this.checked)"></th><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>${list.map(m=>{
       const p=m.product; const cat=state.categories.find(c=>c.id===p.category);
       const marginTag = m.margin>=state.settings.productMarginThresholds.high? '<span class="badge b-green">🟢 Cao</span>' : m.margin<=state.settings.productMarginThresholds.low? '<span class="badge b-red">🔴 Thấp</span>':'<span class="badge b-yellow">🟡 TB</span>';
       return `<tr>
-        <td><b>${p.sku}</b></td><td>${escapeHtml(p.name)}</td><td>${cat?cat.name:''}</td>
+        <td><input type="checkbox" aria-label="Chọn ${escapeHtml(p.sku)}" ${s.selected.includes(p.id)?'checked':''} onchange="toggleProductSelection('${p.id}',this.checked)"></td><td><b>${escapeHtml(p.sku)}</b></td><td>${escapeHtml(p.name)}</td><td>${cat?cat.name:''}</td>
         <td>${formatCurrency(p.sellPrice)}</td><td>${formatCurrency(p.costPrice)}</td>
         <td>${(p.platformFeePct||0).toFixed(1)}%</td>
         <td>${formatCurrency(p.platformManagementFee||0)}</td>
@@ -3015,14 +3020,13 @@ function pageOrganization(){
  const tabs=[['map','Mindmap bộ máy'],['departments','Phòng ban & trách nhiệm'],['workflows','Quy trình phối hợp']];
  let body='';
  if(s.tab==='map'){
- const root=org.departments.find(d=>d.id==='ceo');
- body=`<div class="org-map" aria-label="Sơ đồ tổ chức công ty">${root?orgDepartmentCard(root,true):''}<div class="org-branches">${org.departments.filter(d=>d.id!=='ceo').map(d=>orgDepartmentCard(d)).join('')}</div></div>`;
+ body=mindmapMarkup();
  }else if(s.tab==='departments'){
  body=`<div class="grid grid-2">${org.departments.map(d=>`<article class="card org-detail"><div class="section-title">${escapeHtml(d.name)}<button class="btn btn-sm" onclick="openDepartmentModal('${d.id}')">Sửa</button></div><p><b>Phụ trách:</b> ${escapeHtml(d.owner||'Chưa phân công')} · <b>Dự phòng:</b> ${escapeHtml(d.backup||'Chưa phân công')}</p>${[['Vị trí trong bộ phận',d.roles],['Trách nhiệm',d.responsibilities],['Đầu ra bàn giao',d.outputs],['Chỉ số theo dõi',d.kpis],['Ghi chú / kiêm nhiệm',d.notes]].map(([label,value])=>`<div class="org-copy"><b>${label}</b><p>${escapeHtml(value||'—')}</p></div>`).join('')}</article>`).join('')}</div>`;
  }else{
  const w=org.workflows.find(w=>w.id===s.workflow)||org.workflows[0];
  body=`<div class="filter-row"><select class="select" aria-label="Chọn quy trình" onchange="mainState.organization.workflow=this.value;render()">${org.workflows.map(x=>`<option value="${x.id}" ${x.id===w?.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</select><button class="btn" onclick="openWorkflowModal()">+ Quy trình</button>${w?`<button class="btn" onclick="openWorkflowModal('${w.id}')">Đổi tên</button><button class="btn btn-primary" onclick="openHandoffModal('${w.id}')">+ Bước bàn giao</button>`:''}</div><p class="muted">Đây là quy trình mẫu để phân công và thống nhất cách làm, không tự chuyển đơn hay gửi thông báo. Thời hạn là gợi ý nội bộ; hãy chỉnh theo hợp đồng và quy định sàn của bạn.</p>
- ${w?`<div class="workflow-strip">${w.steps.map((x,i)=>`<div><b>${i+1}. ${escapeHtml(x.title)}</b><span>${escapeHtml(orgDept(x.from)?.name||'—')} → ${escapeHtml(orgDept(x.to)?.name||'—')}</span></div>`).join('')}</div><div class="handoff-list">${w.steps.map((x,i)=>`<article class="card org-detail"><div class="section-title">${i+1}. ${escapeHtml(x.title)}<div class="row-actions"><button aria-label="Đưa bước lên" ${i===0?'disabled':''} onclick="moveHandoff('${w.id}','${x.id}',-1)">↑</button><button aria-label="Đưa bước xuống" ${i===w.steps.length-1?'disabled':''} onclick="moveHandoff('${w.id}','${x.id}',1)">↓</button><button class="btn btn-sm" onclick="openHandoffModal('${w.id}','${x.id}')">Sửa</button><button class="btn btn-sm" onclick="deleteHandoff('${w.id}','${x.id}')">Xóa</button></div></div><div class="handoff-parties"><div><small>BÊN GIAO</small><b>${escapeHtml(orgDept(x.from)?.name||'—')}</b><span>${escapeHtml(orgDept(x.from)?.owner||'Chưa phân công')}</span></div><span class="handoff-arrow">→</span><div><small>BÊN NHẬN</small><b>${escapeHtml(orgDept(x.to)?.name||'—')}</b><span>${escapeHtml(orgDept(x.to)?.owner||'Chưa phân công')}</span></div></div>${[['Hồ sơ / kết quả phải giao',x.deliverable],['Điều kiện nghiệm thu',x.criteria],['Thời hạn phối hợp',x.sla]].map(([label,value])=>`<div class="org-copy"><b>${label}</b><p>${escapeHtml(value||'—')}</p></div>`).join('')}</article>`).join('')||'<div class="card">Chưa có bước bàn giao. Thêm bước để bắt đầu.</div>'}</div>`:''}`;
+ ${w?workflowCards(w):''}`;
  }
  return `<div class="page-title">Bộ máy & phối hợp</div><div class="page-sub">Mô hình đề xuất cho công ty phân phối bán sỉ và bán lẻ trên sàn thương mại điện tử</div><div class="org-summary"><div><strong>${org.departments.length}</strong><span>Ban / bộ phận</span></div><div><strong>${assigned}/${org.departments.length}</strong><span>Đã có phụ trách</span></div><div><strong>${org.workflows.length}</strong><span>Quy trình phối hợp</span></div></div><div class="insight-box"><p>Công ty nhỏ có thể kiêm nhiệm nhiều vai trò. Vẫn nên phân biệt người đề nghị chi, người phê duyệt và người đối chiếu. Phân công tại đây là thông tin quản lý, không cấp quyền truy cập ứng dụng.</p></div><div class="filter-row">${tabs.map(([key,label])=>`<button class="btn ${s.tab===key?'btn-primary':''}" onclick="mainState.organization.tab='${key}';render()">${label}</button>`).join('')}<button class="btn" onclick="openDepartmentModal()">+ Bộ phận</button></div>${body}<p class="muted" style="margin-top:20px">Mô hình do ứng dụng đề xuất; chuỗi xử lý đơn, kho, giao hàng và đổi trả tham khảo <a href="https://help.shopify.com/en/manual/fulfillment" target="_blank" rel="noopener noreferrer">Shopify Help Center</a>. Có thể điều chỉnh theo quy mô thực tế.</p>`;
 }
@@ -3056,6 +3060,66 @@ function saveHandoff(workflowId,id){
 }
 function moveHandoff(workflowId,id,delta){const w=state.organization.workflows.find(x=>x.id===workflowId);if(!w)return;const i=w.steps.findIndex(x=>x.id===id),j=i+delta;if(i<0||j<0||j>=w.steps.length)return;[w.steps[i],w.steps[j]]=[w.steps[j],w.steps[i]];saveData();render();}
 function deleteHandoff(workflowId,id){confirmAction('Xóa bước bàn giao này khỏi quy trình?',()=>{const w=state.organization.workflows.find(x=>x.id===workflowId);if(!w)return;w.steps=w.steps.filter(x=>x.id!==id);saveData();render();});}
+
+function selectedProductIds(){return (mainState.products.selected||[]).filter(id=>state.products.some(p=>p.id===id));}
+function toggleProductSelection(id,on){const ids=new Set(selectedProductIds());on?ids.add(id):ids.delete(id);mainState.products.selected=[...ids];render();}
+function toggleAllProducts(on){mainState.products.selected=on?state.products.filter(p=>(mainState.products.category==='all'||p.category===mainState.products.category)&&(!mainState.products.search||(p.name+' '+p.sku).toLowerCase().includes(mainState.products.search.toLowerCase()))).map(p=>p.id):[];render();}
+function applyProductBulk(){
+ const ids=selectedProductIds(),action=document.getElementById('productBulkAction').value;if(!ids.length)return;
+ const category=document.getElementById('productBulkCategory').value;
+ if(action==='category'&&!state.categories.some(c=>c.id===category)){toast('Chọn danh mục đích','error');return;}
+ const linked=id=>state.orders.some(o=>o.productId===id)||state.expenses.some(e=>e.productId===id)||state.businessPlans.some(p=>(p.productPlans||[]).some(x=>x.productId===id))||state.bookings.some(b=>b.productId===id)||state.ads.some(a=>a.productId===id);
+ const protectedIds=action==='delete'?ids.filter(linked):[];
+ const removable=ids.filter(id=>!protectedIds.includes(id));
+ if(action==='delete'&&!removable.length){toast('Các sản phẩm đã có dữ liệu liên kết; hãy dùng Ngừng bán để giữ lịch sử.','warning');return;}
+ const label=action==='delete'?`Xóa ${removable.length} sản phẩm chưa có liên kết? ${protectedIds.length} sản phẩm có dữ liệu sẽ được giữ lại.`:`Áp dụng ${action==='category'?'đổi danh mục':action==='active'?'Hoạt động':'Ngừng bán'} cho ${ids.length} sản phẩm đã chọn?`;
+ confirmAction(label,()=>{
+ if(action==='delete')state.products=state.products.filter(p=>!removable.includes(p.id)||linked(p.id));
+ else state.products.forEach(p=>{if(ids.includes(p.id)){if(action==='category')p.category=category;else if(['active','inactive'].includes(action))p.status=action;}});
+ mainState.products.selected=[];saveData();render();toast('Đã áp dụng thao tác hàng loạt','success');
+ });
+}
+function ensureMindmap(){
+ const org=state.organization;
+ if(!org.mindmap)org.mindmap={positions:{},edges:org.departments.filter(d=>d.id!=='ceo').map(d=>({id:uid('edge'),from:'ceo',to:d.id}))};
+ if(!org.mindmap.positions)org.mindmap.positions={};if(!Array.isArray(org.mindmap.edges))org.mindmap.edges=[];
+ org.departments.forEach((d,i)=>{if(!org.mindmap.positions[d.id])org.mindmap.positions[d.id]={x:d.id==='ceo'?440:80+(i%4)*360,y:d.id==='ceo'?40:280+Math.floor((i-1)/4)*240};});
+ return org.mindmap;
+}
+function mapPath(a,b){const bend=Math.max(70,Math.abs(b.x-a.x)*.45);return `M ${a.x} ${a.y} C ${a.x+bend} ${a.y}, ${b.x-bend} ${b.y}, ${b.x} ${b.y}`;}
+function mindmapMarkup(){
+ const map=ensureMindmap();return `<div class="card"><p class="muted">Kéo thanh “Di chuyển” để đặt vị trí. Kéo từ chấm nối của một ô sang ô khác để tạo đường nối; hoặc bấm lần lượt hai chấm nối. Bấm tên bộ phận để xem/sửa chi tiết; bấm đường nối để xóa. Cuộn vùng sơ đồ để di chuyển khung nhìn.</p><div class="filter-row"><span class="badge b-purple" id="mapHint">${map.edges.length} đường nối</span><button class="btn" onclick="mapConnectFrom=null;document.getElementById('mapHint').textContent='Đã hủy nối';drawMapEdges()">Hủy nối</button></div><div class="map-scroll"><div class="map-surface" id="mapSurface" tabindex="0" aria-label="Mindmap kéo thả"><svg id="mapEdges" class="map-edges" width="2600" height="2000"></svg>${state.organization.departments.map(d=>{const p=map.positions[d.id];return `<article class="map-node" data-dept="${d.id}" style="left:${p.x}px;top:${p.y}px"><button class="map-drag" data-move="${d.id}" aria-label="Di chuyển ${escapeHtml(d.name)}">⠿ Di chuyển</button><button class="map-title" onclick="openDepartmentModal('${d.id}')">${escapeHtml(d.name)}</button><span class="muted">${escapeHtml(d.owner||'Chưa có người phụ trách')}</span><button class="map-port" data-connect="${d.id}" aria-label="Nối từ ${escapeHtml(d.name)}" title="Kéo sang bộ phận khác để nối">●</button></article>`;}).join('')}</div></div></div>`;
+}
+let mapConnectFrom=null;
+function drawMapEdges(ghost){
+ const svg=document.getElementById('mapEdges');if(!svg)return;const map=ensureMindmap();
+ svg.innerHTML=`<defs><marker id="mapArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a78bfa"/></marker></defs>`+map.edges.filter(e=>orgDept(e.from)&&orgDept(e.to)).map(e=>{const a=map.positions[e.from],b=map.positions[e.to];return `<path tabindex="0" role="button" aria-label="Xóa đường nối ${escapeHtml(orgDept(e.from).name)} đến ${escapeHtml(orgDept(e.to).name)}" data-edge="${e.id}" d="${mapPath({x:a.x+270,y:a.y+80},{x:b.x,y:b.y+80})}" marker-end="url(#mapArrow)"/>`;}).join('')+(ghost?`<path d="${mapPath(ghost.a,ghost.b)}" style="stroke:#22d3ee;stroke-dasharray:8 5;pointer-events:none"/>`:'');
+}
+function createMapEdge(from,to){if(!orgDept(from)||!orgDept(to)||from===to)return;const map=ensureMindmap();if(map.edges.some(e=>e.from===from&&e.to===to)){toast('Đường nối này đã tồn tại','warning');return;}map.edges.push({id:uid('edge'),from,to});saveData();drawMapEdges();document.getElementById('mapHint').textContent=map.edges.length+' đường nối · Đã lưu';}
+function bindMindmap(){
+ const board=document.getElementById('mapSurface');if(!board)return;drawMapEdges();let drag=null;
+ board.onpointerdown=e=>{const move=e.target.closest('[data-move]'),port=e.target.closest('[data-connect]');if(!move&&!port)return;e.preventDefault();const id=(move||port).dataset[move?'move':'connect'],p=ensureMindmap().positions[id];drag={id,mode:move?'move':'connect',x:e.clientX,y:e.clientY,old:{...p},moved:false};board.setPointerCapture(e.pointerId);};
+ board.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved=drag.moved||Math.abs(dx)+Math.abs(dy)>4;if(drag.mode==='move'){const p=ensureMindmap().positions[drag.id];p.x=Math.max(0,Math.min(2310,drag.old.x+dx));p.y=Math.max(0,Math.min(1800,drag.old.y+dy));const n=board.querySelector(`[data-dept="${drag.id}"]`);n.style.left=p.x+'px';n.style.top=p.y+'px';drawMapEdges();}else{const r=board.getBoundingClientRect();drawMapEdges({a:{x:drag.old.x+270,y:drag.old.y+80},b:{x:e.clientX-r.left,y:e.clientY-r.top}});}};
+ board.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;board.releasePointerCapture(e.pointerId);if(d.mode==='move'){if(d.moved){saveData();document.getElementById('mapHint').textContent='Đã lưu vị trí';}return;}const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-dept]')?.dataset.dept;if(target&&target!==d.id){createMapEdge(d.id,target);mapConnectFrom=null;}else if(!d.moved){if(mapConnectFrom&&mapConnectFrom!==d.id){createMapEdge(mapConnectFrom,d.id);mapConnectFrom=null;}else{mapConnectFrom=d.id;document.getElementById('mapHint').textContent='Chọn chấm nối của bộ phận đích';}}drawMapEdges();};
+ board.onpointercancel=()=>{if(drag?.mode==='move'){ensureMindmap().positions[drag.id]=drag.old;const n=board.querySelector(`[data-dept="${drag.id}"]`);n.style.left=drag.old.x+'px';n.style.top=drag.old.y+'px';}drag=null;drawMapEdges();};
+ const remove=e=>{const edge=e.target.closest('[data-edge]');if(!edge)return;const id=edge.dataset.edge;confirmAction('Xóa đường nối này? Các bộ phận vẫn được giữ nguyên.',()=>{const map=ensureMindmap();map.edges=map.edges.filter(x=>x.id!==id);saveData();render();});};
+ board.onclick=e=>{if(e.target.closest('[data-edge]'))remove(e);};board.onkeydown=e=>{if(e.key==='Enter'&&e.target.closest('[data-edge]'))remove(e);};
+}
+function workflowCards(w){
+ return `<div class="handoff-list" id="workflowCards" data-workflow="${w.id}">${w.steps.map((x,i)=>`<article class="card org-detail workflow-edit" data-step="${x.id}"><div class="section-title"><button class="btn workflow-handle" data-step-drag="${x.id}" aria-label="Kéo bước ${i+1}">⠿ Kéo bước ${i+1}</button><div class="row-actions"><button onclick="moveHandoff('${w.id}','${x.id}',-1)" aria-label="Đưa bước lên">↑</button><button onclick="moveHandoff('${w.id}','${x.id}',1)" aria-label="Đưa bước xuống">↓</button><button onclick="deleteHandoff('${w.id}','${x.id}')">Xóa</button></div></div><label>Tên bước<input class="input" data-field="title" value="${escapeHtml(x.title)}" onchange="saveInlineStep('${w.id}','${x.id}','title',this)"></label><div class="form-grid2">${[['from','Bộ phận giao'],['to','Bộ phận nhận']].map(([key,label])=>`<label>${label}<select class="select" data-field="${key}" onchange="saveInlineStep('${w.id}','${x.id}','${key}',this)">${state.organization.departments.map(d=>`<option value="${d.id}" ${x[key]===d.id?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}</select><span class="muted" data-owner="${key}">${escapeHtml(orgDept(x[key])?.owner||'Chưa phân công')}</span></label>`).join('')}</div>${[['deliverable','Hồ sơ / kết quả phải giao'],['criteria','Điều kiện nghiệm thu'],['sla','Thời hạn phối hợp']].map(([key,label])=>`<label>${label}<textarea class="input" rows="3" data-field="${key}" onchange="saveInlineStep('${w.id}','${x.id}','${key}',this)">${escapeHtml(x[key]||'')}</textarea></label>`).join('')}<span class="muted" data-save-status>Đổi nội dung rồi bấm ra ngoài ô để lưu</span></article>`).join('')||'<div class="card">Chưa có bước bàn giao.</div>'}</div>`;
+}
+function saveInlineStep(wid,id,field,input){
+ const w=state.organization.workflows.find(x=>x.id===wid),step=w?.steps.find(x=>x.id===id);if(!step||!['title','from','to','deliverable','criteria','sla'].includes(field))return;const value=input.value.trim();if(!value||(['from','to'].includes(field)&&!orgDept(value))){input.value=step[field]||'';toast('Nội dung không được trống; bộ phận phải hợp lệ','error');return;}step[field]=value;input.value=value;saveData();const card=input.closest('[data-step]');card.querySelector('[data-save-status]').textContent='Đã lưu';if(['from','to'].includes(field))card.querySelector(`[data-owner="${field}"]`).textContent=orgDept(value)?.owner||'Chưa phân công';
+}
+function reorderWorkflow(wid,source,target){const w=state.organization.workflows.find(x=>x.id===wid);if(!w||source===target)return;const from=w.steps.findIndex(x=>x.id===source),to=w.steps.findIndex(x=>x.id===target);if(from<0||to<0)return;const [item]=w.steps.splice(from,1);w.steps.splice(to,0,item);saveData();render();}
+function bindWorkflowDrag(){
+ const list=document.getElementById('workflowCards');if(!list)return;let drag=null;
+ list.onpointerdown=e=>{const handle=e.target.closest('[data-step-drag]');if(!handle)return;document.activeElement?.blur();e.preventDefault();drag={id:handle.dataset.stepDrag,target:null};list.setPointerCapture(e.pointerId);};
+ list.onpointermove=e=>{if(!drag)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-step]');list.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));if(target){drag.target=target.dataset.step;target.classList.add('drop-target');}};
+ list.onpointerup=e=>{if(!drag)return;const d=drag;drag=null;list.releasePointerCapture(e.pointerId);list.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));if(d.target)reorderWorkflow(list.dataset.workflow,d.id,d.target);};
+ list.onpointercancel=()=>{drag=null;list.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));};
+}
+afterRenderHooks.organization=()=>{bindMindmap();bindWorkflowDrag();};
 
 const PAGES = {
   organization:pageOrganization, dashboard:pageDashboard, business_plans:pageBusinessPlans, orders:pageOrders, products:pageProducts, revenue:pageRevenue, refunds:pageRefunds,
