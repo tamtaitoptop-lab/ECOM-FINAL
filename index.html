@@ -198,6 +198,15 @@ hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
 .mono{font-variant-numeric:tabular-nums;}
 .stat-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
 .stat-line:last-child{border-bottom:none;}
+.treasury-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+.treasury-box{background:var(--card);border:1px solid var(--border-soft);border-radius:13px;padding:14px;min-width:0;}
+.treasury-box.warning{border-color:rgba(244,63,94,.45);background:rgba(244,63,94,.07);}
+.treasury-box.safe{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.06);}
+.treasury-label{font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:6px;}
+.treasury-value{font-size:21px;font-weight:800;overflow-wrap:anywhere;}
+.treasury-note{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45;}
+.coverage-track{height:7px;background:rgba(255,255,255,.07);border-radius:8px;overflow:hidden;margin-top:9px;}
+.coverage-track span{height:100%;display:block;border-radius:inherit;background:var(--grad-1);}
 .notif-item{padding:10px;border-radius:10px;border:1px solid var(--border-soft);margin-bottom:8px;font-size:12px;display:flex;gap:8px;}
 .notif-item svg{width:15px;height:15px;flex-shrink:0;margin-top:1px;}
 .hidden{display:none!important;}
@@ -212,7 +221,9 @@ hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
   .grid-kpi{grid-template-columns:repeat(2,1fr);}
   .content{padding:14px;}
   .form-grid2{grid-template-columns:1fr;}
+  .treasury-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
+@media(max-width:560px){.treasury-summary{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -249,6 +260,10 @@ const EXPENSE_TYPES = [
   {id:'marketing_other',name:'Chi phí marketing',variable:true},
   {id:'other',name:'Chi phí khác',variable:false},
 ];
+const PAYABLE_TYPES = {
+  loan_principal:'Tất toán gốc', loan_interest:'Trả lãi', supplier:'Nợ nhà cung cấp',
+  tax:'Thuế / BHXH', payroll:'Lương / thưởng', rent:'Thuê mặt bằng', operating:'Chi phí vận hành', other:'Khác'
+};
 const ICONS = {
   dashboard:'layout-dashboard', orders:'shopping-cart', products:'package', revenue:'trending-up',
   refund:'rotate-ccw', inventory:'boxes', finance:'wallet', income:'arrow-down-circle',
@@ -325,6 +340,9 @@ function defaultState(){
     campaigns:[],
     bookings:[],
     ads:[],
+    cashAccounts:[],
+    payables:[],
+    loans:[],
     employees:[
       {id:uid('emp'),name:'Phương Anh',dept:'Marketing',role:'KOC Manager'},
       {id:uid('emp'),name:'Minh Phạm',dept:'Sales',role:'Sales Executive'},
@@ -338,10 +356,15 @@ function saveData(){
   catch(e){ toast('Lỗi lưu dữ liệu: '+e.message,'error'); }
   scheduleSupabasePush();
 }
+function ensureFinanceState(){
+  if(!Array.isArray(state.cashAccounts)) state.cashAccounts=[];
+  if(!Array.isArray(state.payables)) state.payables=[];
+  if(!Array.isArray(state.loans)) state.loans=[];
+}
 function loadData(){
   try{
     const raw = localStorage.getItem(LS_KEY);
-    if(raw){ state = JSON.parse(raw); return true; }
+    if(raw){ state = JSON.parse(raw); ensureFinanceState(); return true; }
   }catch(e){ console.error(e); }
   return false;
 }
@@ -486,6 +509,7 @@ async function pullStateFromSupabase(silent){
     supabaseSyncing = false;
     if(data && data.data){
       state = Object.assign(defaultState(), data.data);
+      ensureFinanceState();
       saveData();
       if(!silent) toast('Đã tải dữ liệu từ Supabase thành công','success');
       return true;
@@ -562,7 +586,7 @@ function generateDemoData(){
     state.products.push({
       id:uid('prod'), sku:'SKU'+String(i+1).padStart(3,'0'), name:productNames[i]||('Sản phẩm '+(i+1)),
       category:pick(cats).id, platformId:pick(platforms).id, importPrice, sellPrice:sell, costPrice:cost,
-      platformFeePct: +(rand(20,80)/10).toFixed(1), platformManagementFee: rand(1,15)*1000, adsCostPerUnit:0, status:'active'
+      platformFeePct: +(rand(20,80)/10).toFixed(1), platformManagementFee: rand(1,15)*1000, status:'active'
     });
   }
   state.categories = cats;
@@ -694,6 +718,22 @@ function calcOrder(order){
   const netProfit = netReceived - cogs - kocCommission - adsCost;
   const margin = safeDiv(netProfit, netRevenue) * 100;
   return {grossRevenue,netRevenue,platformFee,managementFee,paymentFee,kocCommission,adsCost,shippingFee,netReceived,cogs,grossProfit,netProfit,margin};
+}
+function orderCashAmount(order){
+  if(!order?.cashAccountId) return 0;
+  if(order.actualCashReceived===null||order.actualCashReceived===undefined||order.actualCashReceived==='') return Math.max(0,calcOrder(order).netReceived);
+  const entered=Number(order.actualCashReceived);
+  return Number.isFinite(entered)&&entered>=0?entered:Math.max(0,calcOrder(order).netReceived);
+}
+function syncOrderCashPosting(oldOrder,newOrder){
+  ensureFinanceState();
+  const oldAccount=oldOrder?.cashAccountId?state.cashAccounts.find(a=>a.id===oldOrder.cashAccountId):null;
+  const oldAmount=Number(oldOrder?.cashPostedAmount||0);
+  if(oldAccount&&oldAmount){oldAccount.balance=Number(oldAccount.balance||0)-oldAmount;oldAccount.updatedAt=new Date().toISOString();}
+  const newAccount=newOrder?.cashAccountId?state.cashAccounts.find(a=>a.id===newOrder.cashAccountId):null;
+  const newAmount=newAccount?orderCashAmount(newOrder):0;
+  if(newAccount&&newAmount){newAccount.balance=Number(newAccount.balance||0)+newAmount;newAccount.updatedAt=new Date().toISOString();}
+  if(newOrder) newOrder.cashPostedAmount=newAmount;
 }
 function isCounted(order){ return order.status==='success'; }
 
@@ -926,6 +966,7 @@ const MENU = [
   ]},
   {group:'TÀI CHÍNH', items:[
     {key:'finance',label:'Tổng quan tài chính',icon:'finance'},
+    {key:'treasury',label:'Kế hoạch chi & nợ',icon:'money'},
     {key:'expenses',label:'Chi phí',icon:'expense'},
     {key:'profit',label:'Lợi nhuận',icon:'profit'},
     {key:'settlement',label:'Đối soát sàn',icon:'settlement'},
@@ -1013,6 +1054,9 @@ function showNotifications(){
 }
 function getNotifications(){
   const notifs=[];
+  ensureFinanceState();
+  state.payables.filter(p=>p.status!=='paid'&&daysBetween(todayISO(),p.dueDate)<0).forEach(p=>notifs.push({icon:'alert',title:'Khoản phải trả quá hạn',detail:`${p.name}: ${formatCurrency(p.amount)} · hạn ${fmtDate(p.dueDate)}`}));
+  state.payables.filter(p=>p.status!=='paid'&&daysBetween(todayISO(),p.dueDate)>=0&&daysBetween(todayISO(),p.dueDate)<=7).forEach(p=>notifs.push({icon:'bell',title:'Sắp đến hạn thanh toán',detail:`${p.name}: ${formatCurrency(p.amount)} · hạn ${fmtDate(p.dueDate)}`}));
   const bookOverdue = state.bookings.filter(b=>b.status!=='done'&&b.status!=='cancelled'&&b.deadline<todayISO());
   bookOverdue.forEach(b=>{ const k=getKoc(b.kocId); notifs.push({icon:'alert',title:'Booking quá hạn',detail:`${k?k.name:'KOC'} - deadline ${fmtDate(b.deadline)}`}); });
   const settlement = computeSettlement(dateRangeForFull());
@@ -1223,10 +1267,6 @@ function getOrderSourceName(id){
   if(id===ORDER_SERVICE_SOURCE_ID) return 'Dịch vụ';
   return getPlatform(id)?.name || '';
 }
-function calcActualRevenueProfit(order, computed){
-  const c = computed || calcOrder(order);
-  return c.netRevenue - c.platformFee - c.kocCommission - c.cogs;
-}
 function pageOrders(){
   const s = mainState.orders;
   s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.orders.some(o=>o.id===id)) : [];
@@ -1273,14 +1313,14 @@ function pageOrders(){
     <thead><tr>
       <th style="width:42px;text-align:center"><input type="checkbox" aria-label="Chọn tất cả phiếu trên trang" ${allPageSelected?'checked':''} onchange="toggleOrderSelectAll(this.checked)"></th>
       <th>Mã đơn</th><th>Ngày</th><th>Nguồn</th><th>Khách hàng</th><th>Sản phẩm</th><th>SL</th>
-      <th>Giá bán</th><th>Giảm giá</th><th>Doanh thu</th><th>Chi phí</th><th>Chi phí KOC</th><th>Giá vốn</th><th>Lợi nhuận</th><th>Trạng thái</th><th></th>
+      <th>Giá bán</th><th>Giảm giá</th><th>Doanh thu</th><th>Quỹ / tài khoản nhận</th><th>Thực nhận vào quỹ</th><th>Chi phí</th><th>Chi phí KOC</th><th>Giá vốn</th><th>Lợi nhuận</th><th>Trạng thái</th><th></th>
     </tr></thead>
     <tbody>
     ${pageItems.map(o=>{
       const c = calcOrder(o);
-      const orderProfit = calcActualRevenueProfit(o, c);
       const p = getProduct(o.productId);
       const sourceName = getOrderSourceName(o.platformId);
+      const cashAccount = state.cashAccounts.find(a=>a.id===o.cashAccountId);
       return `<tr>
         <td style="text-align:center"><input type="checkbox" aria-label="Chọn phiếu ${escapeHtml(o.code)}" ${selectedSet.has(o.id)?'checked':''} onchange="toggleOrderSelection('${o.id}',this.checked)"></td>
         <td><b>${o.code}</b></td>
@@ -1292,10 +1332,12 @@ function pageOrders(){
         <td>${formatCurrency(o.sellPrice)}</td>
         <td>${formatCurrency(o.discount)}</td>
         <td>${formatCurrency(c.netRevenue)}</td>
+        <td>${cashAccount?escapeHtml(cashAccount.name):'<span class="muted">Chưa phân loại</span>'}</td>
+        <td>${o.cashAccountId?formatCurrency(o.cashPostedAmount??orderCashAmount(o)):'—'}</td>
         <td>${formatCurrency(c.platformFee)}</td>
         <td>${formatCurrency(c.kocCommission)}</td>
         <td>${formatCurrency(c.cogs)}</td>
-        <td style="color:${orderProfit>=0?'var(--green)':'var(--red)'}">${formatCurrency(orderProfit)}</td>
+        <td style="color:${c.netProfit>=0?'var(--green)':'var(--red)'}">${formatCurrency(c.netProfit)}</td>
         <td><span class="badge b-${o.status}">${ORDER_STATUS_LABEL[o.status]}</span></td>
         <td><div class="row-actions">
           <button onclick="viewOrder('${o.id}')">${icon('eye',14)}</button>
@@ -1354,6 +1396,7 @@ function bulkDeleteOrders(){
   if(!ids.length){ toast('Vui lòng chọn ít nhất một phiếu','warning'); return; }
   confirmAction(`Xóa ${ids.length} mục doanh thu đã chọn? Dữ liệu liên quan sẽ được cập nhật lại.`, ()=>{
     const selected=new Set(ids);
+    state.orders.filter(o=>selected.has(o.id)).forEach(o=>syncOrderCashPosting(o,null));
     state.orders=state.orders.filter(o=>!selected.has(o.id));
     mainState.orders.selected=[];
     saveData(); render();
@@ -1362,6 +1405,8 @@ function bulkDeleteOrders(){
 }
 
 function openOrderModal(id){
+  ensureFinanceState();
+  if(!state.cashAccounts.length){toast('Hãy tạo quỹ hoặc tài khoản nhận tiền trước khi nhập doanh thu','warning');navigate('treasury');return;}
   const editing = id? state.orders.find(o=>o.id===id) : null;
   const o = editing || {id:null, code:'ORD'+String(20000+state.orders.length), date:todayISO(), platformId:state.platforms[0].id, customer:'', productId:'', qty:1, sellPrice:0, discount:0, shippingFeeSeller:0, kocId:'', campaignId:'', adsCostAllocated:0, status:'pending', refundReason:''};
   openModal({
@@ -1382,6 +1427,8 @@ function openOrderModal(id){
         <div class="form-row"><label>KOC (nếu có)</label><select class="select" name="kocId"><option value="">— Không có —</option>${state.kocs.map(k=>`<option value="${k.id}" ${o.kocId===k.id?'selected':''}>${escapeHtml(k.name)}</option>`).join('')}</select></div>
         <div class="form-row"><label>Chiến dịch</label><select class="select" name="campaignId"><option value="">— Không có —</option>${state.campaigns.map(c=>`<option value="${c.id}" ${o.campaignId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
         <div class="form-row"><label>Trạng thái *</label><select class="select" name="status">${ORDER_STATUSES.map(st=>`<option value="${st}" ${o.status===st?'selected':''}>${ORDER_STATUS_LABEL[st]}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Quỹ / tài khoản nhận tiền *</label><select class="select" name="cashAccountId" required><option value="">— Chọn nơi nhận doanh thu —</option>${state.cashAccounts.map(a=>`<option value="${a.id}" ${o.cashAccountId===a.id?'selected':''}>${escapeHtml(a.name)} · ${formatCurrency(a.balance)}</option>`).join('')}</select></div>
+        <div class="form-row"><label>Số tiền thực nhận vào quỹ</label><input class="input" type="number" min="0" name="actualCashReceived" value="${o.actualCashReceived??''}" placeholder="Để trống = tự tính sau các loại phí"><div class="muted" style="font-size:11px;margin-top:5px">Đây là số tiền thực tế cộng vào quỹ đã chọn, không phải doanh thu gộp.</div></div>
       </div>
       <div class="form-row" id="refundReasonRow" style="${o.status==='return'?'':'display:none'}"><label>Lý do hoàn/hủy</label><input class="input" name="refundReason" value="${escapeHtml(o.refundReason||'')}"></div>
     </form>`,
@@ -1409,20 +1456,29 @@ function submitOrderForm(id){
   if(discount > sellPrice*qty){ toast('Giảm giá không được lớn hơn tổng giá bán','error'); return; }
   const productId = fd.get('productId') || null;
   const product = productId ? getProduct(productId) : null;
+  const cashAccountId=fd.get('cashAccountId');
+  if(!cashAccountId||!state.cashAccounts.some(a=>a.id===cashAccountId)){toast('Vui lòng chọn quỹ hoặc tài khoản nhận doanh thu','error');return;}
+  const actualCashRaw=String(fd.get('actualCashReceived')||'').trim();
+  const actualCashReceived=actualCashRaw===''?null:Number(actualCashRaw);
+  if(actualCashReceived!==null&&(!Number.isFinite(actualCashReceived)||actualCashReceived<0)){toast('Số tiền thực nhận không hợp lệ','error');return;}
   const data = {
     code, date: fd.get('date'), platformId: fd.get('platformId'), customer: fd.get('customer').trim(),
     productId, sku: product ? product.sku : '', qty, sellPrice, discount,
     shippingFeeSeller: parseFloat(fd.get('shippingFeeSeller')||0), adsCostAllocated: parseFloat(fd.get('adsCostAllocated')||0),
     kocId: fd.get('kocId')||null, campaignId: fd.get('campaignId')||null, status: fd.get('status'),
     refundReason: fd.get('refundReason')||'',
+    cashAccountId, actualCashReceived,
   };
   let orderObj;
   if(id){
     orderObj = state.orders.find(o=>o.id===id);
+    const oldOrder={...orderObj};
     Object.assign(orderObj, data);
+    syncOrderCashPosting(oldOrder,orderObj);
   } else {
     orderObj = Object.assign({id:uid('ord')}, data);
     state.orders.push(orderObj);
+    syncOrderCashPosting(null,orderObj);
   }
   saveData();
   closeModal();
@@ -1431,6 +1487,8 @@ function submitOrderForm(id){
 }
 function deleteOrder(id){
   confirmAction('Bạn có chắc muốn xóa mục doanh thu này? Dữ liệu liên quan sẽ được cập nhật lại.', ()=>{
+    const oldOrder=state.orders.find(o=>o.id===id);
+    if(oldOrder) syncOrderCashPosting(oldOrder,null);
     state.orders = state.orders.filter(o=>o.id!==id);
     saveData(); render();
     toast('Đã xóa','success');
@@ -1438,7 +1496,7 @@ function deleteOrder(id){
 }
 function viewOrder(id){
   const o = state.orders.find(x=>x.id===id); if(!o) return;
-  const c = calcOrder(o); const p=getProduct(o.productId); const sourceName=getOrderSourceName(o.platformId); const koc=getKoc(o.kocId);
+  const c = calcOrder(o); const p=getProduct(o.productId); const sourceName=getOrderSourceName(o.platformId); const koc=getKoc(o.kocId); const cashAccount=state.cashAccounts.find(a=>a.id===o.cashAccountId);
   openModal({title:'Chi tiết đơn '+o.code, bodyHtml:`
     <div class="stat-line"><span class="muted">Nguồn</span><b>${escapeHtml(sourceName)}</b></div>
     <div class="stat-line"><span class="muted">Khách hàng</span><b>${escapeHtml(o.customer)}</b></div>
@@ -1453,6 +1511,8 @@ function viewOrder(id){
     <div class="stat-line"><span class="muted">Chi phí KOC</span><b>${formatCurrency(c.kocCommission)}</b></div>
     <div class="stat-line"><span class="muted">Chi phí quảng cáo</span><b>${formatCurrency(c.adsCost)}</b></div>
     <div class="stat-line"><span class="muted">Doanh thu thực nhận</span><b>${formatCurrency(c.netReceived)}</b></div>
+    <div class="stat-line"><span class="muted">Quỹ / tài khoản nhận</span><b>${cashAccount?escapeHtml(cashAccount.name):'Chưa phân loại'}</b></div>
+    <div class="stat-line"><span class="muted">Đã cộng vào quỹ</span><b>${o.cashAccountId?formatCurrency(o.cashPostedAmount??orderCashAmount(o)):'—'}</b></div>
     <div class="stat-line"><span class="muted">Giá vốn</span><b>${formatCurrency(c.cogs)}</b></div>
     <div class="stat-line"><span class="muted">Lợi nhuận gộp</span><b>${formatCurrency(c.grossProfit)}</b></div>
     <div class="stat-line"><span class="muted">Lợi nhuận ròng</span><b style="color:${c.netProfit>=0?'var(--green)':'var(--red)'}">${formatCurrency(c.netProfit)}</b></div>
@@ -1498,11 +1558,11 @@ function exportTableExcel(type){
   if(type==='orders'){
     filename='don-hang';
     rows = filterOrders(state.orders, {}).map(o=>{ const c=calcOrder(o); const p=getProduct(o.productId);
-      return {'Mã đơn':o.code,'Ngày':o.date,'Nguồn':getOrderSourceName(o.platformId),'Khách hàng':o.customer,'Sản phẩm':p?p.name:'','SKU':o.sku||'','Số lượng':o.qty,'Giá bán':o.sellPrice,'Giảm giá':o.discount,'Doanh thu':c.netRevenue,'Chi phí':c.platformFee,'Chi phí KOC':c.kocCommission,'Giá vốn':c.cogs,'Lợi nhuận':calcActualRevenueProfit(o,c),'Trạng thái':ORDER_STATUS_LABEL[o.status]};
+      return {'Mã đơn':o.code,'Ngày':o.date,'Nguồn':getOrderSourceName(o.platformId),'Khách hàng':o.customer,'Sản phẩm':p?p.name:'','SKU':o.sku||'','Số lượng':o.qty,'Giá bán':o.sellPrice,'Giảm giá':o.discount,'Doanh thu':c.netRevenue,'Chi phí':c.platformFee,'Chi phí KOC':c.kocCommission,'Giá vốn':c.cogs,'Lợi nhuận':c.netProfit,'Trạng thái':ORDER_STATUS_LABEL[o.status]};
     });
   } else if(type==='products'){
     filename='san-pham';
-    rows = state.products.map(p=>{ const est=calcProductUnitEstimate(p); return {'SKU':p.sku,'Tên sản phẩm':p.name,'Giá bán':p.sellPrice,'Giá vốn':p.costPrice,'Phí sàn (%)':p.platformFeePct,'Phí quản lý sàn':p.platformManagementFee,'Phí Ads':p.adsCostPerUnit||0,'Lợi nhuận ước tính / SP':est.profit,'Biên LN %':est.margin.toFixed(1)}; });
+    rows = computeProductMetrics({}).map(m=>({'SKU':m.product.sku,'Tên sản phẩm':m.product.name,'Phí sàn (%)':m.product.platformFeePct,'Phí quản lý sàn':m.product.platformManagementFee,'Doanh thu':m.revenue,'Giá vốn':m.cogs,'Lợi nhuận':m.profit,'Biên LN %':m.margin.toFixed(1)}));
   } else if(type==='koc'){
     filename='koc';
     rows = computeKocMetrics({}).map(m=>({'KOC':m.koc.name,'Doanh thu':m.revenue,'Đơn':m.orderCount,'Hoa hồng':m.commission,'Tổng chi phí':m.totalCost,'Lợi nhuận':m.profit,'ROAS':m.roas.toFixed(2),'ROI %':m.roi.toFixed(1)}));
@@ -1520,7 +1580,7 @@ function exportTableExcel(type){
 function downloadTemplate(type){
   let rows=[], filename='template';
   if(type==='orders'){ filename='template-don-hang'; rows=[{'Mã đơn':'ORD0001','Ngày':todayISO(),'Nguồn':'TikTok Shop','Khách hàng':'Nguyễn Văn A','SKU':state.products[0]?state.products[0].sku:'','Số lượng':1,'Giá bán':100000,'Giảm giá':0,'Trạng thái':'success'}]; }
-  else if(type==='products'){ filename='template-san-pham'; rows=[{'SKU':'SKU999','Tên sản phẩm':'Sản phẩm mẫu','Danh mục':state.categories[0]?.name,'Giá nhập':50000,'Giá bán':100000,'Giá vốn':55000,'Phí sàn (%)':5,'Phí quản lý sàn':2000,'Phí Ads':0}]; }
+  else if(type==='products'){ filename='template-san-pham'; rows=[{'SKU':'SKU999','Tên sản phẩm':'Sản phẩm mẫu','Danh mục':state.categories[0]?.name,'Giá nhập':50000,'Giá bán':100000,'Giá vốn':55000,'Phí sàn (%)':5,'Phí quản lý sàn':2000}]; }
   else if(type==='kocs'){ filename='template-koc'; rows=[{'Tên':'KOC mẫu','Username':'@kocmau','Nền tảng':'TikTok','Group':'KOC A','Follower':10000}]; }
   else if(type==='expenses'){ filename='template-chi-phi'; rows=[{'Ngày':todayISO(),'Loại':'other','Số tiền':1000000,'Ghi chú':'Ghi chú mẫu'}]; }
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -1532,20 +1592,9 @@ function downloadTemplate(type){
 /* ========================================================
    PAGE: PRODUCTS
    ======================================================== */
-mainState.products = {search:'', category:'all', selected:[]};
-function calcProductUnitEstimate(p){
-  const sellPrice = Number(p.sellPrice)||0;
-  const costPrice = Number(p.costPrice)||0;
-  const platformFee = sellPrice * (Number(p.platformFeePct)||0) / 100;
-  const managementFee = Number(p.platformManagementFee)||0;
-  const adsCost = Number(p.adsCostPerUnit)||0;
-  const profit = sellPrice - costPrice - platformFee - managementFee - adsCost;
-  const margin = safeDiv(profit, sellPrice) * 100;
-  return {platformFee, adsCost, profit, margin};
-}
+mainState.products = {search:'', category:'all'};
 function pageProducts(){
   const s = mainState.products;
-  s.selected = Array.isArray(s.selected) ? s.selected.filter(id=>state.products.some(p=>p.id===id)) : [];
   const filters = dateRangeForFull();
   const metrics = computeProductMetrics(filters);
   let list = metrics.filter(m=>{
@@ -1553,9 +1602,6 @@ function pageProducts(){
     if(s.search){ const q=s.search.toLowerCase(); if(!(m.product.name.toLowerCase().includes(q)||m.product.sku.toLowerCase().includes(q))) return false; }
     return true;
   });
-  const selectedSet = new Set(s.selected);
-  const selectedCount = s.selected.length;
-  const allVisibleSelected = list.length>0 && list.every(m=>selectedSet.has(m.product.id));
   return `
   <div class="page-title">Sản phẩm</div>
   <div class="page-sub">Quản lý danh mục sản phẩm và hiệu quả kinh doanh</div>
@@ -1571,33 +1617,20 @@ function pageProducts(){
     <button class="btn" onclick="exportTableExcel('products')">${icon('download',14)} Export</button>
     <button class="btn btn-primary" style="margin-left:auto" onclick="openProductModal()">${icon('plus',14)} Thêm sản phẩm</button>
   </div>
-  ${selectedCount?`<div class="filter-row" style="padding:10px 12px;border:1px solid var(--border-soft);border-radius:10px;background:var(--card);margin-top:-4px">
-    <b style="font-size:12.5px">Đã chọn ${selectedCount} sản phẩm</b>
-    <select class="select" id="bulkProductStatus">
-      <option value="">Chuyển trạng thái...</option>
-      <option value="active">Hoạt động</option>
-      <option value="inactive">Ngừng bán</option>
-    </select>
-    <button class="btn" onclick="bulkUpdateProductStatus()">${icon('check',14)} Áp dụng</button>
-    <button class="btn btn-danger" onclick="bulkDeleteProducts()">${icon('trash',14)} Xóa đã chọn</button>
-    <button class="btn" onclick="clearProductSelection()">Bỏ chọn</button>
-  </div>`:''}
   ${!list.length? emptyState('Chưa có sản phẩm nào','openProductModal()','+ Thêm sản phẩm') : `
   <div class="table-wrap"><table>
-    <thead><tr><th style="width:42px;text-align:center"><input type="checkbox" aria-label="Chọn tất cả sản phẩm đang hiển thị" ${allVisibleSelected?'checked':''} onchange="toggleProductSelectAll(this.checked)"></th><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Phí Ads</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
+    <thead><tr><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>${list.map(m=>{
       const p=m.product; const cat=state.categories.find(c=>c.id===p.category);
-      const est = calcProductUnitEstimate(p);
-      const marginTag = est.margin>=state.settings.productMarginThresholds.high? '<span class="badge b-green">🟢 Cao</span>' : est.margin<=state.settings.productMarginThresholds.low? '<span class="badge b-red">🔴 Thấp</span>':'<span class="badge b-yellow">🟡 TB</span>';
+      const marginTag = m.margin>=state.settings.productMarginThresholds.high? '<span class="badge b-green">🟢 Cao</span>' : m.margin<=state.settings.productMarginThresholds.low? '<span class="badge b-red">🔴 Thấp</span>':'<span class="badge b-yellow">🟡 TB</span>';
       return `<tr>
-        <td style="text-align:center"><input type="checkbox" aria-label="Chọn sản phẩm ${escapeHtml(p.name)}" ${selectedSet.has(p.id)?'checked':''} onchange="toggleProductSelection('${p.id}',this.checked)"></td>
         <td><b>${p.sku}</b></td><td>${escapeHtml(p.name)}</td><td>${cat?cat.name:''}</td>
         <td>${formatCurrency(p.sellPrice)}</td><td>${formatCurrency(p.costPrice)}</td>
         <td>${(p.platformFeePct||0).toFixed(1)}%</td>
         <td>${formatCurrency(p.platformManagementFee||0)}</td>
-        <td>${formatCurrency(p.adsCostPerUnit||0)}</td>
-        <td style="color:${est.profit>=0?'var(--green)':'var(--red)'}">${formatCurrency(est.profit)}</td>
-        <td>${formatPct(est.margin)} ${marginTag}</td>
+        <td>${formatCurrency(m.revenue)}</td>
+        <td style="color:${m.profit>=0?'var(--green)':'var(--red)'}">${formatCurrency(m.profit)}</td>
+        <td>${formatPct(m.margin)} ${marginTag}</td>
         <td><span class="badge ${p.status==='active'?'b-green':'b-red'}">${p.status==='active'?'Hoạt động':'Ngừng bán'}</span></td>
         <td><div class="row-actions"><button onclick="openProductModal('${p.id}')">${icon('edit',14)}</button><button onclick="deleteProduct('${p.id}')">${icon('trash',14)}</button></div></td>
       </tr>`;
@@ -1605,56 +1638,9 @@ function pageProducts(){
   </table></div>`}
   `;
 }
-function toggleProductSelection(id,checked){
-  const selected = new Set(mainState.products.selected||[]);
-  if(checked) selected.add(id); else selected.delete(id);
-  mainState.products.selected = [...selected];
-  render();
-}
-function getVisibleProductIds(){
-  const s=mainState.products;
-  const metrics=computeProductMetrics(dateRangeForFull());
-  return metrics.filter(m=>{
-    if(s.category!=='all' && m.product.category!==s.category) return false;
-    if(s.search){ const q=s.search.toLowerCase(); if(!(m.product.name.toLowerCase().includes(q)||m.product.sku.toLowerCase().includes(q))) return false; }
-    return true;
-  }).map(m=>m.product.id);
-}
-function toggleProductSelectAll(checked){
-  const selected=new Set(mainState.products.selected||[]);
-  getVisibleProductIds().forEach(id=>checked?selected.add(id):selected.delete(id));
-  mainState.products.selected=[...selected];
-  render();
-}
-function clearProductSelection(){ mainState.products.selected=[]; render(); }
-function bulkUpdateProductStatus(){
-  const ids=mainState.products.selected||[];
-  if(!ids.length){ toast('Vui lòng chọn ít nhất một sản phẩm','warning'); return; }
-  const status=document.getElementById('bulkProductStatus')?.value;
-  if(!status){ toast('Vui lòng chọn trạng thái cần chuyển','warning'); return; }
-  state.products.forEach(p=>{ if(ids.includes(p.id)) p.status=status; });
-  mainState.products.selected=[];
-  saveData(); render();
-  toast(`Đã chuyển trạng thái ${ids.length} sản phẩm sang ${status==='active'?'Hoạt động':'Ngừng bán'}`,'success');
-}
-function bulkDeleteProducts(){
-  const ids=mainState.products.selected||[];
-  if(!ids.length){ toast('Vui lòng chọn ít nhất một sản phẩm','warning'); return; }
-  const selected=new Set(ids);
-  const inUseCount=state.orders.filter(o=>selected.has(o.productId)).length;
-  const msg=inUseCount
-    ? `Xóa ${ids.length} sản phẩm đã chọn? Có ${inUseCount} mục doanh thu đang liên kết với các sản phẩm này. Xóa vẫn tiếp tục?`
-    : `Xóa ${ids.length} sản phẩm đã chọn?`;
-  confirmAction(msg, ()=>{
-    state.products=state.products.filter(p=>!selected.has(p.id));
-    mainState.products.selected=[];
-    saveData(); render();
-    toast(`Đã xóa ${ids.length} sản phẩm`,'success');
-  });
-}
 function openProductModal(id){
   const editing = id? getProduct(id): null;
-  const p = editing || {id:null, sku:'SKU'+String(state.products.length+1).padStart(3,'0'), name:'', category:state.categories[0]?.id||'', platformId:state.platforms[0].id, importPrice:0, sellPrice:0, costPrice:0, platformFeePct:0, platformManagementFee:0, adsCostPerUnit:0, status:'active'};
+  const p = editing || {id:null, sku:'SKU'+String(state.products.length+1).padStart(3,'0'), name:'', category:state.categories[0]?.id||'', platformId:state.platforms[0].id, importPrice:0, sellPrice:0, costPrice:0, platformFeePct:0, platformManagementFee:0, status:'active'};
   openModal({title:editing?'Sửa sản phẩm':'Thêm sản phẩm', bodyHtml:`
     <form id="productForm">
       <div class="form-grid2">
@@ -1667,7 +1653,6 @@ function openProductModal(id){
         <div class="form-row"><label>Giá bán *</label><input class="input" type="number" min="0" name="sellPrice" value="${p.sellPrice}" required></div>
         <div class="form-row"><label>Phí sàn (%)</label><input class="input" type="number" min="0" max="100" step="0.1" name="platformFeePct" value="${p.platformFeePct||0}"></div>
         <div class="form-row"><label>Phí quản lý của sàn (đ/sản phẩm)</label><input class="input" type="number" min="0" name="platformManagementFee" value="${p.platformManagementFee||0}"></div>
-        <div class="form-row"><label>Phí Ads (đ/sản phẩm)</label><input class="input" type="number" min="0" name="adsCostPerUnit" value="${p.adsCostPerUnit||0}"></div>
         <div class="form-row"><label>Trạng thái</label><select class="select" name="status"><option value="active" ${p.status==='active'?'selected':''}>Hoạt động</option><option value="inactive" ${p.status==='inactive'?'selected':''}>Ngừng bán</option></select></div>
       </div>
     </form>`, footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitProductForm('${p.id||''}')">${icon('save',14)} Lưu</button>`});
@@ -1679,7 +1664,7 @@ function submitProductForm(id){
   if(!id && state.products.some(p=>p.sku===sku)){ toast('SKU đã tồn tại','error'); return; }
   const platformFeePct = parseFloat(fd.get('platformFeePct')||0);
   if(platformFeePct<0||platformFeePct>100){ toast('Phí sàn phải trong khoảng 0-100%','error'); return; }
-  const data = {sku,name,category:fd.get('category'),platformId:fd.get('platformId'),importPrice:parseFloat(fd.get('importPrice')||0),costPrice:parseFloat(fd.get('costPrice')||0),sellPrice:parseFloat(fd.get('sellPrice')||0),platformFeePct,platformManagementFee:parseFloat(fd.get('platformManagementFee')||0),adsCostPerUnit:parseFloat(fd.get('adsCostPerUnit')||0),status:fd.get('status')};
+  const data = {sku,name,category:fd.get('category'),platformId:fd.get('platformId'),importPrice:parseFloat(fd.get('importPrice')||0),costPrice:parseFloat(fd.get('costPrice')||0),sellPrice:parseFloat(fd.get('sellPrice')||0),platformFeePct,platformManagementFee:parseFloat(fd.get('platformManagementFee')||0),status:fd.get('status')};
   if(data.costPrice<0||data.sellPrice<0){ toast('Giá không được âm','error'); return; }
   if(id){
     const p=getProduct(id); Object.assign(p,data);
@@ -1708,7 +1693,7 @@ function handleImportProducts(file){
       rows.forEach(r=>{
         const sku=String(r.SKU||r.sku||'').trim(); if(!sku) return;
         if(state.products.some(p=>p.sku===sku)) return;
-        state.products.push({id:uid('prod'),sku,name:String(r['Tên sản phẩm']||r.name||sku),category:state.categories[0]?.id,platformId:state.platforms[0].id,importPrice:parseFloat(r['Giá nhập']||0),costPrice:parseFloat(r['Giá vốn']||r.costPrice||0),sellPrice:parseFloat(r['Giá bán']||r.sellPrice||0),platformFeePct:parseFloat(r['Phí sàn (%)']||r.platformFeePct||0),platformManagementFee:parseFloat(r['Phí quản lý sàn']||r.platformManagementFee||0),adsCostPerUnit:parseFloat(r['Phí Ads']||r.adsCostPerUnit||0),status:'active'});
+        state.products.push({id:uid('prod'),sku,name:String(r['Tên sản phẩm']||r.name||sku),category:state.categories[0]?.id,platformId:state.platforms[0].id,importPrice:parseFloat(r['Giá nhập']||0),costPrice:parseFloat(r['Giá vốn']||r.costPrice||0),sellPrice:parseFloat(r['Giá bán']||r.sellPrice||0),platformFeePct:parseFloat(r['Phí sàn (%)']||r.platformFeePct||0),platformManagementFee:parseFloat(r['Phí quản lý sàn']||r.platformManagementFee||0),status:'active'});
         added++;
       });
       saveData(); render();
@@ -1787,13 +1772,53 @@ function pageRefunds(){
    PAGE: FINANCE OVERVIEW
    ======================================================== */
 mainState.finance = {preset:'30d'};
+function payableStatus(p){
+  if(p.status==='paid') return 'paid';
+  return daysBetween(todayISO(),p.dueDate)<0?'overdue':'pending';
+}
+function treasuryMetrics(horizonDays=30){
+  ensureFinanceState();
+  const cash=state.cashAccounts.reduce((s,a)=>s+Number(a.balance||0),0);
+  const pending=state.payables.filter(p=>p.status!=='paid');
+  const upcoming=pending.filter(p=>daysBetween(todayISO(),p.dueDate)<=horizonDays);
+  const due=upcoming.reduce((s,p)=>s+Number(p.amount||0),0);
+  const shortage=Math.max(0,due-cash),surplus=Math.max(0,cash-due);
+  const nearest=[...pending].sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''))[0]||null;
+  return {cash,pending,upcoming,due,shortage,surplus,nearest,coverage:due?Math.min(100,Math.round(cash/due*100)):100};
+}
+function treasuryDateRange(s){
+  const today=todayISO();
+  if(s.horizon==='all') return {from:null,to:null,label:'Toàn bộ thời gian'};
+  if(s.horizon==='custom'){
+    let from=s.from||today,to=s.to||today;
+    if(from>to){const temp=from;from=to;to=temp;}
+    return {from,to,label:`${fmtDate(from)} – ${fmtDate(to)}`};
+  }
+  const days=Number(s.horizon)||30;
+  return {from:today,to:addDays(today,days),label:`${days} ngày tới`};
+}
+function treasuryMetricsForRange(range){
+  ensureFinanceState();
+  const cash=state.cashAccounts.reduce((sum,a)=>sum+Number(a.balance||0),0);
+  const pending=state.payables.filter(p=>p.status!=='paid');
+  const upcoming=pending.filter(p=>(!range.from||p.dueDate>=range.from)&&(!range.to||p.dueDate<=range.to));
+  const due=upcoming.reduce((sum,p)=>sum+Number(p.amount||0),0),shortage=Math.max(0,due-cash),surplus=Math.max(0,cash-due);
+  const nearest=[...upcoming].sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''))[0]||null;
+  return {cash,pending,upcoming,due,shortage,surplus,nearest,coverage:due?Math.min(100,Math.round(cash/due*100)):100};
+}
 function pageFinance(){
   const s=mainState.finance; const range=dateRangeFor(s.preset);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const d = computeDashboard(filters);
   const settlement = computeSettlement(filters);
-  const debtPayable = state.expenses.filter(e=>e.date>=range.from&&e.date<=range.to).reduce((s,e)=>s+0,0); // placeholder none unpaid tracked
+  const treasury=treasuryMetrics(30);
   return `<div class="page-title">Tổng quan tài chính</div><div class="page-sub">Bức tranh tài chính toàn diện của doanh nghiệp</div>
+  <div class="treasury-summary">
+    <div class="treasury-box"><div class="treasury-label">QUỸ HIỆN TẠI</div><div class="treasury-value">${formatCurrency(treasury.cash)}</div><div class="treasury-note">${state.cashAccounts.length} nguồn tiền đang theo dõi</div></div>
+    <div class="treasury-box"><div class="treasury-label">PHẢI CHI TRONG 30 NGÀY</div><div class="treasury-value">${formatCurrency(treasury.due)}</div><div class="treasury-note">${treasury.upcoming.length} khoản chờ thanh toán</div></div>
+    <div class="treasury-box ${treasury.shortage?'warning':'safe'}"><div class="treasury-label">${treasury.shortage?'SỐ TIỀN ĐANG THIẾU':'DƯ SAU KẾ HOẠCH CHI'}</div><div class="treasury-value" style="color:${treasury.shortage?'var(--red)':'var(--green)'}">${formatCurrency(treasury.shortage||treasury.surplus)}</div><div class="treasury-note">Quỹ đáp ứng ${treasury.coverage}% nghĩa vụ</div><div class="coverage-track"><span style="width:${treasury.coverage}%"></span></div></div>
+    <div class="treasury-box"><div class="treasury-label">KỲ HẠN GẦN NHẤT</div><div class="treasury-value" style="font-size:17px">${treasury.nearest?fmtDate(treasury.nearest.dueDate):'Không có'}</div><div class="treasury-note">${treasury.nearest?escapeHtml(treasury.nearest.name)+' · '+formatCurrency(treasury.nearest.amount):'Chưa có khoản phải trả'}</div><button class="btn btn-sm" style="margin-top:8px" onclick="navigate('treasury')">Xem kế hoạch chi</button></div>
+  </div>
   <div class="filter-row">${[['7d','7 ngày'],['30d','30 ngày'],['this_month','Tháng này'],['this_quarter','Quý này'],['this_year','Năm nay']].map(([k,l])=>`<span class="chip ${s.preset===k?'active':''}" onclick="mainState.finance.preset='${k}';render()">${l}</span>`).join('')}</div>
   <div class="grid grid-kpi" style="margin-bottom:16px">
     ${kpiCard({title:'Tổng doanh thu',value:d.cur.grossRevenue,icon:'revenue',grad:'var(--grad-1)',change:0})}
@@ -1815,6 +1840,86 @@ function pageFinance(){
   ${settlement.map(x=>`<tr><td><b>${x.platform.name}</b></td><td>${formatCurrency(x.revenue)}</td><td>${formatCurrency(x.platformFee)}</td><td>${formatCurrency(x.managementFee)}</td><td>${formatCurrency(x.paymentFee)}</td><td>${formatCurrency(x.shippingFee)}</td><td>${formatCurrency(x.shouldReceive)}</td><td>${formatCurrency(x.actualReceived)}</td><td style="color:${Math.abs(x.diff)<1000?'var(--green)':'var(--red)'}">${formatCurrency(x.diff)}</td></tr>`).join('')}
   </tbody></table></div></div>`;
 }
+
+/* ========================================================
+   PAGE: TREASURY / KẾ HOẠCH CHI & NỢ
+   ======================================================== */
+mainState.treasury={horizon:'30',from:todayISO(),to:addDays(todayISO(),30),status:'pending',type:'all'};
+function pageTreasury(){
+  ensureFinanceState();
+  const s=mainState.treasury,range=treasuryDateRange(s),m=treasuryMetricsForRange(range);
+  const principal=m.upcoming.filter(p=>p.type==='loan_principal').reduce((a,p)=>a+Number(p.amount||0),0);
+  const interest=m.upcoming.filter(p=>p.type==='loan_interest').reduce((a,p)=>a+Number(p.amount||0),0);
+  const rows=state.payables.filter(p=>{
+    const st=payableStatus(p),dateOk=(!range.from||p.dueDate>=range.from)&&(!range.to||p.dueDate<=range.to);
+    return dateOk&&(s.status==='all'||st===s.status)&&(s.type==='all'||p.type===s.type);
+  }).sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));
+  return `<div class="page-title">Kế hoạch chi & nợ</div><div class="page-sub">Theo dõi quỹ, nợ gốc, tiền lãi và toàn bộ nghĩa vụ thanh toán sắp tới</div>
+  <div class="filter-row"><button class="btn btn-primary" onclick="openLoanModal()">${icon('plus',14)} Nhập khoản vay mới</button><button class="btn" onclick="openCashAccountModal()">${icon('plus',14)} Cập nhật quỹ</button><button class="btn" onclick="openPayableModal()">${icon('plus',14)} Thêm khoản phải trả</button></div>
+  <div class="filter-row" style="padding:10px 12px;border:1px solid var(--border-soft);border-radius:11px;background:var(--card)"><b style="font-size:12px">Thời gian tổng quan:</b>${[['7','7 ngày'],['30','30 ngày'],['90','90 ngày'],['all','Toàn bộ'],['custom','Tùy chọn']].map(([k,l])=>`<span class="chip ${s.horizon===k?'active':''}" onclick="mainState.treasury.horizon='${k}';render()">${l}</span>`).join('')}${s.horizon==='custom'?`<input class="dateinput" type="date" value="${s.from}" onchange="mainState.treasury.from=this.value;render()"><span class="muted">đến</span><input class="dateinput" type="date" value="${s.to}" onchange="mainState.treasury.to=this.value;render()">`:''}<span class="muted" style="margin-left:auto;font-size:11.5px">Đang xem: ${range.label}</span></div>
+  <div class="treasury-summary">
+    <div class="treasury-box"><div class="treasury-label">QUỸ HIỆN TẠI</div><div class="treasury-value">${formatCurrency(m.cash)}</div><div class="treasury-note">${state.cashAccounts.length} nguồn tiền</div></div>
+    <div class="treasury-box"><div class="treasury-label">TỔNG PHẢI CHI · ${escapeHtml(range.label).toUpperCase()}</div><div class="treasury-value">${formatCurrency(m.due)}</div><div class="treasury-note">Gốc ${formatCurrency(principal)} · Lãi ${formatCurrency(interest)}</div></div>
+    <div class="treasury-box ${m.shortage?'warning':'safe'}"><div class="treasury-label">${m.shortage?'THIẾU HỤT DỰ KIẾN':'CÒN DƯ DỰ KIẾN'}</div><div class="treasury-value" style="color:${m.shortage?'var(--red)':'var(--green)'}">${formatCurrency(m.shortage||m.surplus)}</div><div class="treasury-note">Khả năng đáp ứng ${m.coverage}%</div><div class="coverage-track"><span style="width:${m.coverage}%"></span></div></div>
+    <div class="treasury-box"><div class="treasury-label">HẠN GẦN NHẤT</div><div class="treasury-value" style="font-size:17px">${m.nearest?fmtDate(m.nearest.dueDate):'Không có'}</div><div class="treasury-note">${m.nearest?escapeHtml(m.nearest.name)+' · '+formatCurrency(m.nearest.amount):'Chưa có khoản chờ trả'}</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="section-title">Các khoản vay <button class="btn btn-sm" onclick="openLoanModal()">${icon('plus',13)} Vay vốn thêm</button></div>
+    ${state.loans.length?`<div class="table-wrap"><table><thead><tr><th>Ngày nhận vốn</th><th>Bên cho vay</th><th>Tiền gốc</th><th>Tiền lãi dự kiến</th><th>Nhận vào quỹ</th><th>Hạn trả gốc</th><th></th></tr></thead><tbody>${state.loans.slice().sort((a,b)=>(b.disbursementDate||'').localeCompare(a.disbursementDate||'')).map(l=>{const account=state.cashAccounts.find(a=>a.id===l.cashAccountId);return `<tr><td>${fmtDate(l.disbursementDate)}</td><td><b>${escapeHtml(l.lender)}</b>${l.note?`<div class="muted" style="font-size:11px;margin-top:3px">${escapeHtml(l.note)}</div>`:''}</td><td><b>${formatCurrency(l.principal)}</b></td><td>${formatCurrency(l.interestAmount)}</td><td>${account?escapeHtml(account.name):'—'}</td><td>${fmtDate(l.principalDueDate)}</td><td><div class="row-actions"><button title="Hoàn tác khoản vay nhập nhầm" onclick="undoLoan('${l.id}')">${icon('trash',14)}</button></div></td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty-state" style="padding:24px">Chưa có khoản vay nào. Khi vay thêm vốn, hãy nhập tại đây để tiền tự cộng vào quỹ và tạo lịch trả nợ.</div>'}
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="section-title">Cơ cấu quỹ <button class="btn btn-sm" onclick="openCashAccountModal()">${icon('plus',13)} Thêm nguồn</button></div>
+    ${state.cashAccounts.length?`<div class="grid grid-3">${state.cashAccounts.map(a=>`<div class="card" style="padding:12px"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${escapeHtml(a.name)}</b><div class="muted" style="font-size:11px;margin-top:3px">${escapeHtml(a.type||'Nguồn tiền')}</div></div><div class="row-actions"><button onclick="openCashAccountModal('${a.id}')">${icon('edit',13)}</button><button onclick="deleteCashAccount('${a.id}')">${icon('trash',13)}</button></div></div><div style="font-size:19px;font-weight:800;margin-top:10px">${formatCurrency(a.balance)}</div></div>`).join('')}</div>`:'<div class="empty-state" style="padding:24px">Chưa nhập số dư quỹ. Hãy thêm tiền mặt hoặc tài khoản ngân hàng.</div>'}
+  </div>
+  <div class="filter-row">
+    <select class="select" onchange="mainState.treasury.status=this.value;render()"><option value="pending" ${s.status==='pending'?'selected':''}>Chờ trả</option><option value="overdue" ${s.status==='overdue'?'selected':''}>Quá hạn</option><option value="paid" ${s.status==='paid'?'selected':''}>Đã trả</option><option value="all" ${s.status==='all'?'selected':''}>Mọi trạng thái</option></select>
+    <select class="select" onchange="mainState.treasury.type=this.value;render()"><option value="all">Mọi loại</option>${Object.entries(PAYABLE_TYPES).map(([k,v])=>`<option value="${k}" ${s.type===k?'selected':''}>${v}</option>`).join('')}</select>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Khoản phải trả</th><th>Loại</th><th>Chủ nợ / Đối tác</th><th>Ngày phải trả</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>
+    ${rows.length?rows.map(p=>{const st=payableStatus(p),diff=daysBetween(todayISO(),p.dueDate);const dueText=st==='paid'?`Đã trả ${fmtDate(p.paidDate)}`:diff<0?`Quá hạn ${Math.abs(diff)} ngày`:diff===0?'Đến hạn hôm nay':`Còn ${diff} ngày`;return `<tr><td><b>${escapeHtml(p.name)}</b>${p.note?`<div class="muted" style="font-size:11px;margin-top:3px">${escapeHtml(p.note)}</div>`:''}</td><td>${PAYABLE_TYPES[p.type]||'Khác'}</td><td>${escapeHtml(p.creditor||'—')}</td><td>${fmtDate(p.dueDate)}<div style="font-size:11px;color:${st==='overdue'?'var(--red)':diff<=7&&st!=='paid'?'var(--yellow)':'var(--muted)'}">${dueText}</div></td><td><b>${formatCurrency(p.amount)}</b></td><td><span class="badge ${st==='paid'?'b-green':st==='overdue'?'b-red':'b-yellow'}">${st==='paid'?'Đã trả':st==='overdue'?'Quá hạn':'Chờ trả'}</span></td><td><div class="row-actions">${st!=='paid'?`<button title="Xác nhận đã trả" onclick="openSettlePayableModal('${p.id}')">${icon('check',14)}</button>`:''}<button onclick="openPayableModal('${p.id}')">${icon('edit',14)}</button><button onclick="deletePayable('${p.id}')">${icon('trash',14)}</button></div></td></tr>`}).join(''):'<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">Không có khoản phải trả trong bộ lọc</td></tr>'}
+  </tbody></table></div>`;
+}
+function openLoanModal(){
+  ensureFinanceState();
+  if(!state.cashAccounts.length){toast('Hãy tạo ít nhất một nguồn quỹ trước khi nhập khoản vay','warning');openCashAccountModal();return;}
+  openModal({title:'Nhập khoản vay mới',wide:true,bodyHtml:`<div class="insight-box">${icon('info',16)}<p>Khoản vay sẽ <b>cộng vào quỹ</b>, đồng thời tạo khoản phải trả gốc và lãi. Tiền vay không được tính là doanh thu.</p></div><div class="form-grid2"><div class="form-row"><label>Bên cho vay *</label><input class="input" id="loanLender" placeholder="Ngân hàng / Cá nhân"></div><div class="form-row"><label>Số tiền vay *</label><input class="input" type="number" min="1" id="loanPrincipal"></div><div class="form-row"><label>Ngày nhận tiền *</label><input class="input" type="date" id="loanDate" value="${todayISO()}"></div><div class="form-row"><label>Tiền nhận vào quỹ *</label><select class="select" id="loanCashAccount">${state.cashAccounts.map(a=>`<option value="${a.id}">${escapeHtml(a.name)} · ${formatCurrency(a.balance)}</option>`).join('')}</select></div><div class="form-row"><label>Ngày phải trả gốc *</label><input class="input" type="date" id="loanPrincipalDue" value="${addDays(todayISO(),30)}"></div><div class="form-row"><label>Tiền lãi dự kiến</label><input class="input" type="number" min="0" id="loanInterest" value="0"></div><div class="form-row"><label>Ngày phải trả lãi</label><input class="input" type="date" id="loanInterestDue" value="${addDays(todayISO(),30)}"></div><div class="form-row"><label>Mã hợp đồng / Ghi chú</label><input class="input" id="loanNote"></div></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitLoan()">Ghi nhận khoản vay</button>`});
+}
+function submitLoan(){
+  const lender=document.getElementById('loanLender').value.trim(),principal=Number(document.getElementById('loanPrincipal').value),disbursementDate=document.getElementById('loanDate').value,cashAccountId=document.getElementById('loanCashAccount').value,principalDueDate=document.getElementById('loanPrincipalDue').value,interestAmount=Number(document.getElementById('loanInterest').value||0),interestDueDate=document.getElementById('loanInterestDue').value,note=document.getElementById('loanNote').value.trim();
+  const account=state.cashAccounts.find(a=>a.id===cashAccountId);
+  if(!lender||principal<=0||!disbursementDate||!principalDueDate||!account){toast('Vui lòng nhập đủ bên cho vay, số tiền, quỹ nhận và hạn trả gốc','error');return;}
+  if(interestAmount<0||interestAmount>0&&!interestDueDate){toast('Vui lòng nhập tiền lãi và ngày trả lãi hợp lệ','error');return;}
+  const loanId=uid('loan'),principalPayableId=uid('pay'),interestPayableId=interestAmount>0?uid('pay'):'';
+  const loan={id:loanId,lender,principal,disbursementDate,cashAccountId,principalDueDate,interestAmount,interestDueDate:interestAmount>0?interestDueDate:'',note,principalPayableId,interestPayableId,createdAt:new Date().toISOString()};
+  state.loans.push(loan);
+  account.balance=Number(account.balance||0)+principal;account.updatedAt=new Date().toISOString();
+  state.payables.push({id:principalPayableId,name:`Trả gốc khoản vay - ${lender}`,type:'loan_principal',amount:principal,creditor:lender,dueDate:principalDueDate,note:note||'Tạo tự động từ khoản vay',status:'pending',paidDate:'',cashAccountId:'',loanId,createdAt:new Date().toISOString()});
+  if(interestPayableId) state.payables.push({id:interestPayableId,name:`Trả lãi khoản vay - ${lender}`,type:'loan_interest',amount:interestAmount,creditor:lender,dueDate:interestDueDate,note:note||'Tạo tự động từ khoản vay',status:'pending',paidDate:'',cashAccountId:'',loanId,createdAt:new Date().toISOString()});
+  saveData();closeModal();render();toast(`Đã cộng ${formatCurrency(principal)} vào ${account.name} và tạo lịch trả nợ`,'success');
+}
+function undoLoan(id){
+  const loan=state.loans.find(l=>l.id===id);if(!loan)return;
+  const linked=state.payables.filter(p=>p.loanId===id),account=state.cashAccounts.find(a=>a.id===loan.cashAccountId);
+  if(linked.some(p=>p.status==='paid')){toast('Không thể hoàn tác vì khoản gốc hoặc lãi đã được ghi nhận thanh toán','warning');return;}
+  if(!account||Number(account.balance)<Number(loan.principal)){toast('Không thể hoàn tác vì quỹ nhận vốn hiện không đủ số tiền vay','warning');return;}
+  confirmAction(`Hoàn tác khoản vay ${formatCurrency(loan.principal)} từ ${loan.lender}? Tiền sẽ bị trừ khỏi quỹ và lịch trả nợ liên quan sẽ bị xóa.`,()=>{account.balance=Number(account.balance)-Number(loan.principal);account.updatedAt=new Date().toISOString();state.payables=state.payables.filter(p=>p.loanId!==id);state.loans=state.loans.filter(l=>l.id!==id);saveData();render();toast('Đã hoàn tác khoản vay','success');});
+}
+function openCashAccountModal(id){
+  const a=id?state.cashAccounts.find(x=>x.id===id):null;
+  openModal({title:a?'Sửa nguồn quỹ':'Thêm nguồn quỹ',bodyHtml:`<div class="form-grid2"><div class="form-row"><label>Tên quỹ / tài khoản *</label><input class="input" id="cashName" value="${escapeHtml(a?.name||'')}" placeholder="Vietcombank"></div><div class="form-row"><label>Loại nguồn tiền</label><select class="select" id="cashType">${['Tài khoản ngân hàng','Tiền mặt','Quỹ dự phòng','Ví điện tử','Khác'].map(x=>`<option ${a?.type===x?'selected':''}>${x}</option>`).join('')}</select></div></div><div class="form-row"><label>Số dư hiện tại *</label><input class="input" type="number" min="0" id="cashBalance" value="${a?.balance??''}"></div><div class="form-row"><label>Ghi chú</label><input class="input" id="cashNote" value="${escapeHtml(a?.note||'')}"></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitCashAccount('${id||''}')">Lưu</button>`});
+}
+function submitCashAccount(id){const name=document.getElementById('cashName').value.trim(),balance=Number(document.getElementById('cashBalance').value);if(!name||!Number.isFinite(balance)||balance<0){toast('Vui lòng nhập tên và số dư hợp lệ','error');return;}const obj={id:id||uid('cash'),name,type:document.getElementById('cashType').value,balance,note:document.getElementById('cashNote').value.trim(),updatedAt:new Date().toISOString()};state.cashAccounts=id?state.cashAccounts.map(x=>x.id===id?obj:x):[...state.cashAccounts,obj];saveData();closeModal();render();toast('Đã cập nhật quỹ','success');}
+function deleteCashAccount(id){
+  const linkedRevenue=state.orders.some(o=>o.cashAccountId===id),linkedLoan=state.loans.some(l=>l.cashAccountId===id),linkedPayment=state.payables.some(p=>p.cashAccountId===id);
+  if(linkedRevenue||linkedLoan||linkedPayment){toast('Không thể xóa vì nguồn quỹ đã có giao dịch doanh thu, khoản vay hoặc thanh toán','warning');return;}
+  confirmAction('Xóa nguồn quỹ này?',()=>{state.cashAccounts=state.cashAccounts.filter(x=>x.id!==id);saveData();render();toast('Đã xóa nguồn quỹ','success');});
+}
+function openPayableModal(id){
+  const p=id?state.payables.find(x=>x.id===id):null;
+  openModal({title:p?'Sửa khoản phải trả':'Thêm khoản phải trả',wide:true,bodyHtml:`<div class="form-row"><label>Tên khoản phải trả *</label><input class="input" id="payableName" value="${escapeHtml(p?.name||'')}" placeholder="Trả gốc khoản vay tháng 10"></div><div class="form-grid2"><div class="form-row"><label>Loại nghĩa vụ *</label><select class="select" id="payableType">${Object.entries(PAYABLE_TYPES).map(([k,v])=>`<option value="${k}" ${p?.type===k?'selected':''}>${v}</option>`).join('')}</select></div><div class="form-row"><label>Số tiền *</label><input class="input" type="number" min="1" id="payableAmount" value="${p?.amount||''}"></div><div class="form-row"><label>Chủ nợ / Đối tác</label><input class="input" id="payableCreditor" value="${escapeHtml(p?.creditor||'')}"></div><div class="form-row"><label>Ngày dự kiến phải trả *</label><input class="input" type="date" id="payableDueDate" value="${p?.dueDate||todayISO()}"></div></div><div class="form-row"><label>Ghi chú</label><textarea class="input" id="payableNote">${escapeHtml(p?.note||'')}</textarea></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="submitPayable('${id||''}')">Lưu khoản phải trả</button>`});
+}
+function submitPayable(id){const old=id?state.payables.find(x=>x.id===id):null,name=document.getElementById('payableName').value.trim(),amount=Number(document.getElementById('payableAmount').value),dueDate=document.getElementById('payableDueDate').value;if(!name||amount<=0||!dueDate){toast('Vui lòng nhập tên, số tiền và ngày phải trả','error');return;}const obj={id:id||uid('pay'),name,type:document.getElementById('payableType').value,amount,creditor:document.getElementById('payableCreditor').value.trim(),dueDate,note:document.getElementById('payableNote').value.trim(),status:old?.status||'pending',paidDate:old?.paidDate||'',cashAccountId:old?.cashAccountId||'',createdAt:old?.createdAt||new Date().toISOString()};state.payables=id?state.payables.map(x=>x.id===id?obj:x):[...state.payables,obj];saveData();closeModal();render();toast('Đã lưu khoản phải trả','success');}
+function deletePayable(id){const p=state.payables.find(x=>x.id===id);if(p?.loanId){toast('Khoản này thuộc lịch vay vốn. Hãy dùng Hoàn tác khoản vay nếu nhập nhầm.','warning');return;}confirmAction('Xóa khoản phải trả này?',()=>{state.payables=state.payables.filter(x=>x.id!==id);saveData();render();toast('Đã xóa khoản phải trả','success');});}
+function openSettlePayableModal(id){const p=state.payables.find(x=>x.id===id);if(!p)return;openModal({title:'Xác nhận đã thanh toán',bodyHtml:`<div class="insight-box">${icon('info',16)}<p><b>${escapeHtml(p.name)}</b><br>Số tiền: ${formatCurrency(p.amount)}</p></div><div class="form-row"><label>Ngày thanh toán</label><input class="input" type="date" id="settleDate" value="${todayISO()}"></div><div class="form-row"><label>Trừ tiền từ nguồn quỹ</label><select class="select" id="settleCash"><option value="">Không trừ quỹ, chỉ đánh dấu đã trả</option>${state.cashAccounts.map(a=>`<option value="${a.id}">${escapeHtml(a.name)} · ${formatCurrency(a.balance)}</option>`).join('')}</select><div class="muted" style="font-size:11px;margin-top:5px">Nếu chọn nguồn quỹ, số dư sẽ giảm đúng bằng số tiền thanh toán.</div></div>`,footerHtml:`<button class="btn" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="settlePayable('${id}')">Xác nhận đã trả</button>`});}
+function settlePayable(id){const p=state.payables.find(x=>x.id===id),cashId=document.getElementById('settleCash').value;if(!p)return;if(cashId){const a=state.cashAccounts.find(x=>x.id===cashId);if(!a)return;if(Number(a.balance)<Number(p.amount)){toast('Nguồn quỹ không đủ để thanh toán khoản này','error');return;}a.balance=Number(a.balance)-Number(p.amount);a.updatedAt=new Date().toISOString();}p.status='paid';p.paidDate=document.getElementById('settleDate').value||todayISO();p.cashAccountId=cashId;saveData();closeModal();render();toast('Đã ghi nhận thanh toán','success');}
 
 /* ========================================================
    PAGE: EXPENSES
@@ -2666,7 +2771,7 @@ function confirmClearAll(){
 /* ---------------- PAGE MAP ---------------- */
 const PAGES = {
   dashboard:pageDashboard, orders:pageOrders, products:pageProducts, revenue:pageRevenue, refunds:pageRefunds,
-  finance:pageFinance, expenses:pageExpenses, profit:pageProfit, settlement:pageSettlement, cashflow:pageCashflow, breakeven:pageBreakeven,
+  finance:pageFinance, treasury:pageTreasury, expenses:pageExpenses, profit:pageProfit, settlement:pageSettlement, cashflow:pageCashflow, breakeven:pageBreakeven,
   koc_overview:pageKocOverview, koc_list:pageKocList, koc_group:pageKocGroup, campaigns:pageCampaigns, bookings:pageBookings,
   ads:pageAds, reports:pageReports, settings:pageSettings,
 };
