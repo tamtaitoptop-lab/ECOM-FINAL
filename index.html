@@ -1550,7 +1550,7 @@ function pageProducts(){
     <button class="btn" onclick="exportTableExcel('products')">${icon('download',14)} Export</button>
     <button class="btn btn-primary" style="margin-left:auto" onclick="openProductModal()">${icon('plus',14)} Thêm sản phẩm</button>
   </div>
-  <div class="filter-row"><b>Đã chọn ${s.selected.length} sản phẩm</b><select class="select" id="productBulkAction" aria-label="Thao tác hàng loạt"><option value="active">Chuyển Hoạt động</option><option value="inactive">Chuyển Ngừng bán</option><option value="category">Đổi danh mục</option><option value="delete">Xóa sản phẩm chưa có liên kết</option></select><select class="select" id="productBulkCategory" aria-label="Danh mục đích"><option value="">Chọn danh mục đích</option>${state.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select><button class="btn" ${s.selected.length?'':'disabled'} onclick="applyProductBulk()">Áp dụng cho mục đã chọn</button><button class="btn" onclick="mainState.products.selected=[];render()">Bỏ chọn</button></div>
+  <div class="filter-row"><b>Đã chọn ${s.selected.length} sản phẩm</b><select class="select" id="productBulkAction" aria-label="Thao tác hàng loạt"><option value="active">Chuyển Hoạt động</option><option value="inactive">Chuyển Ngừng bán</option><option value="category">Đổi danh mục</option></select><select class="select" id="productBulkCategory" aria-label="Danh mục đích"><option value="">Chọn danh mục đích</option>${state.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select><button class="btn" ${s.selected.length?'':'disabled'} onclick="applyProductBulk()">Áp dụng cho mục đã chọn</button><button class="btn btn-danger" ${s.selected.length?'':'disabled'} onclick="deleteSelectedProducts()">${icon('trash',14)} Xóa đã chọn (${s.selected.length})</button><button class="btn" onclick="mainState.products.selected=[];render()">Bỏ chọn</button></div>
   ${!list.length? emptyState('Chưa có sản phẩm nào','openProductModal()','+ Thêm sản phẩm') : `
   <div class="table-wrap"><table>
     <thead><tr><th><input type="checkbox" aria-label="Chọn tất cả sản phẩm trong bộ lọc" ${list.length&&list.every(m=>s.selected.includes(m.product.id))?'checked':''} onchange="toggleAllProducts(this.checked)"></th><th>SKU</th><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá bán</th><th>Giá vốn</th><th>Phí sàn (%)</th><th>Phí quản lý sàn</th><th>Doanh thu</th><th>Lợi nhuận</th><th>Biên LN</th><th>Trạng thái</th><th></th></tr></thead>
@@ -1575,7 +1575,7 @@ function pageProducts(){
 function pageProductsCatalogOnly(){
  const s=mainState.products,list=state.products.filter(p=>(s.category==='all'||p.category===s.category)&&(!s.search||(p.sku+' '+p.name).toLowerCase().includes(s.search.toLowerCase())));
  s.selected=selectedProductIds();
- return `<div class="page-title">Sản phẩm</div><p class="muted">Tài khoản này chỉ xem thông tin sản phẩm; số liệu doanh thu và lợi nhuận cần quyền tài chính.</p><div class="filter-row"><input class="input" placeholder="Tìm sản phẩm" value="${escapeHtml(s.search)}" oninput="s=mainState.products;s.search=this.value;s.selected=[];render()"><button class="btn btn-primary" onclick="openProductModal()">+ Thêm sản phẩm</button></div><div class="filter-row"><b>Đã chọn ${s.selected.length}</b><select class="select" id="productBulkAction"><option value="active">Hoạt động</option><option value="inactive">Ngừng bán</option><option value="category">Đổi danh mục</option><option value="delete">Xóa mục chưa liên kết</option></select><select class="select" id="productBulkCategory"><option value="">Danh mục đích</option>${state.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select><button class="btn" onclick="applyProductBulk()">Áp dụng</button></div><div class="table-wrap"><table><thead><tr><th><input type="checkbox" aria-label="Chọn tất cả" onchange="toggleAllProducts(this.checked)"></th><th>SKU</th><th>Tên</th><th>Danh mục</th><th>Giá vốn</th><th>Giá bán</th><th>Trạng thái</th><th></th></tr></thead><tbody>${list.map(p=>`<tr><td><input type="checkbox" ${s.selected.includes(p.id)?'checked':''} onchange="toggleProductSelection('${p.id}',this.checked)"></td><td>${escapeHtml(p.sku)}</td><td>${escapeHtml(p.name)}</td><td>${escapeHtml(state.categories.find(c=>c.id===p.category)?.name||'')}</td><td>${formatCurrency(p.costPrice)}</td><td>${formatCurrency(p.sellPrice)}</td><td>${p.status==='active'?'Hoạt động':'Ngừng bán'}</td><td><button class="btn btn-sm" onclick="openProductModal('${p.id}')">Sửa</button></td></tr>`).join('')}</tbody></table></div>`;
+ return `<div class="page-title">Sản phẩm</div><p class="muted">Tài khoản này chỉ xem thông tin sản phẩm; số liệu doanh thu và lợi nhuận cần quyền tài chính.</p><div class="filter-row"><input class="input" placeholder="Tìm sản phẩm" value="${escapeHtml(s.search)}" oninput="s=mainState.products;s.search=this.value;s.selected=[];render()"><button class="btn btn-primary" onclick="openProductModal()">+ Thêm sản phẩm</button></div><div class="filter-row"><b>Đã chọn ${s.selected.length}</b><select class="select" id="productBulkAction"><option value="active">Hoạt động</option><option value="inactive">Ngừng bán</option><option value="category">Đổi danh mục</option></select><select class="select" id="productBulkCategory"><option value="">Danh mục đích</option>${state.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select><button class="btn" ${s.selected.length?'':'disabled'} onclick="applyProductBulk()">Áp dụng</button><button class="btn btn-danger" ${s.selected.length?'':'disabled'} onclick="deleteSelectedProducts()">${icon('trash',14)} Xóa đã chọn (${s.selected.length})</button></div><div class="table-wrap"><table><thead><tr><th><input type="checkbox" aria-label="Chọn tất cả" ${list.length&&list.every(p=>s.selected.includes(p.id))?'checked':''} onchange="toggleAllProducts(this.checked)"></th><th>SKU</th><th>Tên</th><th>Danh mục</th><th>Giá vốn</th><th>Giá bán</th><th>Trạng thái</th><th></th></tr></thead><tbody>${list.map(p=>`<tr><td><input type="checkbox" ${s.selected.includes(p.id)?'checked':''} onchange="toggleProductSelection('${p.id}',this.checked)"></td><td>${escapeHtml(p.sku)}</td><td>${escapeHtml(p.name)}</td><td>${escapeHtml(state.categories.find(c=>c.id===p.category)?.name||'')}</td><td>${formatCurrency(p.costPrice)}</td><td>${formatCurrency(p.sellPrice)}</td><td>${p.status==='active'?'Hoạt động':'Ngừng bán'}</td><td><button class="btn btn-sm" onclick="openProductModal('${p.id}')">Sửa</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 
 function openProductModal(id){
@@ -3114,18 +3114,33 @@ function deleteHandoff(workflowId,id){confirmAction('Xóa bước bàn giao này
 function selectedProductIds(){return (mainState.products.selected||[]).filter(id=>state.products.some(p=>p.id===id));}
 function toggleProductSelection(id,on){const ids=new Set(selectedProductIds());on?ids.add(id):ids.delete(id);mainState.products.selected=[...ids];render();}
 function toggleAllProducts(on){mainState.products.selected=on?state.products.filter(p=>(mainState.products.category==='all'||p.category===mainState.products.category)&&(!mainState.products.search||(p.name+' '+p.sku).toLowerCase().includes(mainState.products.search.toLowerCase()))).map(p=>p.id):[];render();}
+function productHasBusinessLinks(id){
+ const product=state.products.find(p=>p.id===id);if(!product)return false;
+ return state.orders.some(o=>o.productId===id||o.sku===product.sku)
+  ||state.expenses.some(e=>e.productId===id)
+  ||state.businessPlans.some(p=>(p.productPlans||[]).some(x=>x.productId===id))
+  ||state.bookings.some(b=>b.productId===id)
+  ||state.campaigns.some(c=>c.productId===id)
+  ||state.ads.some(a=>a.productId===id);
+}
+function deleteSelectedProducts(){
+ const ids=selectedProductIds();if(!ids.length)return;
+ const protectedIds=ids.filter(productHasBusinessLinks),removable=ids.filter(id=>!protectedIds.includes(id));
+ if(!removable.length){toast('Các sản phẩm đã chọn đều có dữ liệu liên kết. Hãy dùng Ngừng bán để giữ lịch sử.','warning');return;}
+ confirmAction(`Xóa ${removable.length} sản phẩm chưa có dữ liệu liên kết? ${protectedIds.length} sản phẩm đã có dữ liệu sẽ được giữ lại. Không thể hoàn tác việc xóa.`,()=>{
+  const removed=new Set(removable);
+  state.products=state.products.filter(p=>!removed.has(p.id));
+  mainState.products.selected=protectedIds;
+  saveData();render();toast(`Đã xóa ${removable.length} sản phẩm${protectedIds.length?`; giữ lại ${protectedIds.length} sản phẩm có dữ liệu liên kết`:''}`,'success');
+ });
+}
 function applyProductBulk(){
  const ids=selectedProductIds(),action=document.getElementById('productBulkAction').value;if(!ids.length)return;
  const category=document.getElementById('productBulkCategory').value;
  if(action==='category'&&!state.categories.some(c=>c.id===category)){toast('Chọn danh mục đích','error');return;}
- const linked=id=>state.orders.some(o=>o.productId===id)||state.expenses.some(e=>e.productId===id)||state.businessPlans.some(p=>(p.productPlans||[]).some(x=>x.productId===id))||state.bookings.some(b=>b.productId===id)||state.ads.some(a=>a.productId===id);
- const protectedIds=action==='delete'?ids.filter(linked):[];
- const removable=ids.filter(id=>!protectedIds.includes(id));
- if(action==='delete'&&!removable.length){toast('Các sản phẩm đã có dữ liệu liên kết; hãy dùng Ngừng bán để giữ lịch sử.','warning');return;}
- const label=action==='delete'?`Xóa ${removable.length} sản phẩm chưa có liên kết? ${protectedIds.length} sản phẩm có dữ liệu sẽ được giữ lại.`:`Áp dụng ${action==='category'?'đổi danh mục':action==='active'?'Hoạt động':'Ngừng bán'} cho ${ids.length} sản phẩm đã chọn?`;
+ const label=`Áp dụng ${action==='category'?'đổi danh mục':action==='active'?'Hoạt động':'Ngừng bán'} cho ${ids.length} sản phẩm đã chọn?`;
  confirmAction(label,()=>{
- if(action==='delete')state.products=state.products.filter(p=>!removable.includes(p.id)||linked(p.id));
- else state.products.forEach(p=>{if(ids.includes(p.id)){if(action==='category')p.category=category;else if(['active','inactive'].includes(action))p.status=action;}});
+ state.products.forEach(p=>{if(ids.includes(p.id)){if(action==='category')p.category=category;else if(['active','inactive'].includes(action))p.status=action;}});
  mainState.products.selected=[];saveData();render();toast('Đã áp dụng thao tác hàng loạt','success');
  });
 }
