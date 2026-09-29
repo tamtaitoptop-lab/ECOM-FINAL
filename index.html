@@ -10,11 +10,12 @@
 <meta name="apple-mobile-web-app-title" content="ECOM DIGITAL">
 <title>ECOM DIGITAL — Quản lý kinh doanh thương mại điện tử</title>
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/lucide@0.395.0/dist/umd/lucide.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./vendor/chart.umd.min.js"></script>
+<script src="./vendor/xlsx.full.min.js"></script>
+<script src="./vendor/lucide.js"></script>
+<script src="./vendor/supabase-js.umd.js"></script>
 <style>
 :root{
   --bg-0:#050816; --bg-1:#080B1F; --bg-2:#10142B; --bg-3:#161B36;
@@ -1129,13 +1130,19 @@ let CHARTS = {};
 function destroyCharts(){ Object.values(CHARTS).forEach(c=>{try{c.destroy()}catch(e){}}); CHARTS={}; }
 const CHART_COLORS = ['#8B5CF6','#EC4899','#3B82F6','#22D3EE','#22C55E','#F59E0B','#F43F5E','#a78bfa','#f9a8d4','#93c5fd'];
 function chartDefaults(){
+  if(typeof Chart==='undefined'){
+    console.error('Chart.js chưa được tải');
+    toast('Không tải được thư viện biểu đồ. Hãy cập nhật PWA hoặc tải lại trang.','error');
+    return false;
+  }
   Chart.defaults.color = '#8E93AC';
   Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
   Chart.defaults.font.family = "'Segoe UI',sans-serif";
   Chart.defaults.font.size = 11;
+  return true;
 }
 afterRenderHooks.dashboard = function(){
-  chartDefaults();
+  if(!chartDefaults())return;
   destroyCharts();
   const s = mainState.dashboard;
   const range = dateRangeFor(s.preset);
@@ -1714,7 +1721,7 @@ function pageRevenue(){
   </tbody></table></div>`;
 }
 afterRenderHooks.revenue = function(){
-  chartDefaults(); destroyCharts();
+  if(!chartDefaults())return; destroyCharts();
   const s=mainState.revenue; const range=dateRangeFor(s.preset);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const orders=filterOrders(state.orders,filters).filter(isCounted);
@@ -2252,7 +2259,7 @@ function pageProfit(){
   </div>`;
 }
 afterRenderHooks.profit = function(){
-  chartDefaults(); destroyCharts();
+  if(!chartDefaults())return; destroyCharts();
   const s=mainState.profit; const range=uiDateRange(s);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const d = computeDashboard(filters);
@@ -2315,7 +2322,7 @@ function pageCashflow(){
   </div>`;
 }
 afterRenderHooks.cashflow = function(){
-  chartDefaults(); destroyCharts();
+  if(!chartDefaults())return; destroyCharts();
   const s=mainState.cashflow; const range=dateRangeFor(s.preset);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const cf = computeCashFlow(filters);
@@ -2400,7 +2407,7 @@ function pageKocOverview(){
   </div>`;
 }
 afterRenderHooks.koc_overview = function(){
-  chartDefaults(); destroyCharts();
+  if(!chartDefaults())return; destroyCharts();
   const s=mainState.koc_overview; const range=dateRangeFor(s.preset);
   const filters={dateFrom:range.from,dateTo:range.to,platformId:'all'};
   const km = computeKocMetrics(filters).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
@@ -3350,11 +3357,13 @@ async function loginWithPassword(){
  const email=document.getElementById('authEmail')?.value.trim(),password=document.getElementById('authPassword')?.value;
  if(!navigator.onLine){loginPage('Thiết bị đang ngoại tuyến. Hãy bật Internet rồi đăng nhập lại.');return;}
  const client=ensureSupabaseClient();if(!client){loginPage('Thiếu cấu hình Supabase.');return;}
+ let authError=null;
  try{
-  const {error}=await client.auth.signInWithPassword({email,password});
-  if(error){loginPage('Đăng nhập không thành công: '+friendlyAuthError(error));return;}
-  await loadAuthorizedState();
- }catch(e){loginPage('Không kết nối được tới Supabase: '+friendlyAuthError(e)+'. Mở mục “Kiểm tra kết nối trên điện thoại” ở bên dưới để xác định nguyên nhân.');}
+  const result=await client.auth.signInWithPassword({email,password});authError=result.error;
+ }catch(e){loginPage('Không kết nối được tới Supabase: '+friendlyAuthError(e)+'. Mở mục “Kiểm tra kết nối trên điện thoại” ở bên dưới để xác định nguyên nhân.');return;}
+ if(authError){loginPage('Đăng nhập không thành công: '+friendlyAuthError(authError));return;}
+ try{await loadAuthorizedState();}
+ catch(e){console.error('Lỗi sau khi xác thực Supabase:',e);loginPage('Đã kết nối và xác thực Supabase, nhưng giao diện gặp lỗi: '+friendlyAuthError(e)+'. Hãy cập nhật PWA rồi tải lại trang.');}
 }
 async function loadAuthorizedState(){
  if(accessProfile&&hasPendingChanges()){toast('Hãy lưu hoặc tải bản nháp trước khi tải lại dữ liệu','warning');return false;}

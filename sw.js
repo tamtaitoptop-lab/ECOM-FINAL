@@ -1,4 +1,4 @@
-const CACHE_VERSION='ecom-digital-pwa-2026-09-29-v3';
+const CACHE_VERSION='ecom-digital-pwa-2026-09-29-v4';
 const APP_CACHE=`${CACHE_VERSION}-app`;
 const RUNTIME_CACHE=`${CACHE_VERSION}-runtime`;
 const APP_SHELL=[
@@ -8,7 +8,11 @@ const APP_SHELL=[
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/icon-maskable-512.png'
+  './icons/icon-maskable-512.png',
+  './vendor/chart.umd.min.js',
+  './vendor/xlsx.full.min.js',
+  './vendor/lucide.js',
+  './vendor/supabase-js.umd.js'
 ];
 const STATIC_CDN_HOSTS=new Set([
   'cdnjs.cloudflare.com',
