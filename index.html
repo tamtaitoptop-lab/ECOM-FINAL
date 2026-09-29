@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080B1F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ECOM DIGITAL">
 <title>ECOM DIGITAL — Quản lý kinh doanh thương mại điện tử</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/lucide@0.395.0/dist/umd/lucide.js"></script>
@@ -250,12 +257,24 @@ hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
 .map-zoom-space{position:relative;width:2600px;height:2000px}.map-surface{transform-origin:top left}.map-zoom-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.map-zoom-value{min-width:48px;text-align:center;color:var(--text);font-weight:700}.workflow-strip>.workflow-step{flex-basis:250px;transition:border-color .15s,background .15s}.workflow-step:hover,.workflow-step:focus-within{border-color:var(--purple);background:var(--card-hover)}.workflow-step-open{display:block;width:100%;padding:0;border:0;background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}.workflow-step-open:focus-visible{outline:2px solid var(--cyan);outline-offset:5px}.workflow-step-open strong{display:block;margin:8px 0;line-height:1.4}.workflow-step-open .workflow-step-number{color:var(--cyan);font-size:12px;font-weight:700}.workflow-step-open .workflow-step-parties{font-size:12px;color:var(--muted);line-height:1.5}.workflow-step-open .workflow-step-more{color:var(--cyan)}
 
 .auth-screen{min-height:100vh;display:grid;place-items:center;padding:20px}.auth-card{width:min(100%,500px);padding:26px}.auth-card form{display:grid;gap:16px}.auth-card details{margin-top:24px}.auth-card summary{cursor:pointer}.auth-card details .form-row{margin-top:12px}.auth-card .page-title{margin-bottom:8px}
+.pwa-status{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1000;max-width:min(92vw,680px);padding:11px 16px;border:1px solid rgba(245,158,11,.55);border-radius:12px;background:#241a0d;color:#fde68a;box-shadow:var(--shadow);font-size:13px;text-align:center}
+.pwa-action{position:fixed;right:18px;bottom:18px;z-index:1001;border:1px solid rgba(139,92,246,.7);border-radius:12px;padding:11px 16px;background:var(--grad-1);color:#fff;font-weight:700;box-shadow:var(--shadow)}
+.pwa-action:hover{filter:brightness(1.08)}
+.pwa-update{position:fixed;right:18px;bottom:72px;z-index:1001;max-width:min(92vw,360px);padding:13px 14px;border:1px solid rgba(34,211,238,.45);border-radius:12px;background:#101a2d;color:var(--text);box-shadow:var(--shadow);font-size:13px}
+.pwa-update button{margin-left:8px;border:0;border-radius:8px;padding:7px 10px;background:var(--cyan);color:#07131d;font-weight:700}
+.pwa-install-entry{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.auth-install{width:100%;justify-content:center;margin-top:12px}
+@media(max-width:600px){.pwa-action{right:12px;bottom:12px}.pwa-update{right:12px;bottom:64px}.pwa-status{bottom:12px}}
+@media(max-width:720px){.pwa-install-entry .pwa-install-label{display:none}}
 </style>
 </head>
 <body>
 <div id="toast-wrap"></div>
 <div class="overlay-bg" id="overlayBg" onclick="closeMobileSidebar()"></div>
 <div id="app"></div>
+<div id="pwaNetworkStatus" class="pwa-status" role="status" aria-live="polite" hidden></div>
+<button id="pwaInstallButton" class="pwa-action" type="button" hidden>Cài ứng dụng</button>
+<div id="pwaUpdateNotice" class="pwa-update" role="status" hidden>Có phiên bản mới.<button id="pwaUpdateButton" type="button">Cập nhật</button></div>
 
 <script>
 /* =========================================================
@@ -965,6 +984,7 @@ function renderShell(){
         <div class="breadcrumb">ECOM DIGITAL &nbsp;/&nbsp; <b>${escapeHtml(ROUTE_TITLE[currentRoute]||'')}</b></div>
         <div class="search-box">${icon('search',16)}<input id="globalSearch" placeholder="Tìm mã đơn, SKU, sản phẩm, KOC, campaign..." /></div>
         <div class="topbar-right">
+          <button class="btn btn-sm pwa-install-entry" type="button" onclick="openPwaInstall()" title="Cài ECOM DIGITAL trên thiết bị">${icon('download',14)}<span class="pwa-install-label">Cài ứng dụng</span></button>
           <button class="icon-btn" onclick="showNotifications()">${icon('bell',16)}<span class="dot" id="notifDot"></span></button>
           ${isAdmin()?`<button class="icon-btn" onclick="navigate('settings')">${icon('settings',16)}</button>`:''}<button class="btn btn-sm" onclick="logoutAccount()" title="Đăng xuất">Đăng xuất</button>
           <div class="avatar">ED</div>
@@ -3294,6 +3314,7 @@ function loginPage(message=''){
  const cfg=getSupabaseConfig(),app=document.getElementById('app');
  app.innerHTML=`<main class="auth-screen"><div class="card auth-card"><div class="page-title">ECOM DIGITAL</div><p class="muted">Đăng nhập bằng tài khoản nhân viên đã được quản trị viên cấp quyền.</p>${message?`<div class="insight-box"><p>${escapeHtml(message)}</p></div>`:''}
  <form id="loginForm" onsubmit="event.preventDefault();loginWithPassword()"><div class="form-row"><label>Email</label><input class="input" id="authEmail" type="email" autocomplete="username" required></div><div class="form-row"><label>Mật khẩu</label><input class="input" id="authPassword" type="password" autocomplete="current-password" required></div><button class="btn btn-primary" type="submit">Đăng nhập</button></form>
+ <button class="btn pwa-install-entry auth-install" type="button" onclick="openPwaInstall()">${icon('download',15)}<span>Cài ECOM DIGITAL trên thiết bị</span></button>
  ${!cfg?.url||!cfg?.anonKey?`<details><summary>Thiết lập kết nối lần đầu</summary><div class="form-row"><label>Project URL</label><input class="input" id="loginProjectUrl" placeholder="https://project.supabase.co"></div><div class="form-row"><label>Publishable / anon key</label><input class="input" id="loginAnonKey" autocomplete="off"></div><div class="form-row"><label>Mã cửa hàng</label><input class="input" id="loginStoreId" value="default"></div><button class="btn" onclick="saveLoginConfig()">Lưu kết nối</button></details>`:''}
  <p class="muted" style="font-size:12px">Không có tài khoản? Người quản trị tạo email trong Supabase Authentication và cấp quyền trong Cài đặt → Tài khoản & phân quyền.</p></div></main>`;
 }
@@ -3397,6 +3418,100 @@ async function init(){
   if(data?.session)await loadAuthorizedState();
 }
 document.addEventListener('DOMContentLoaded', init);
+</script>
+<script>
+(() => {
+  const networkStatus=document.getElementById('pwaNetworkStatus');
+  const installButton=document.getElementById('pwaInstallButton');
+  const updateNotice=document.getElementById('pwaUpdateNotice');
+  const updateButton=document.getElementById('pwaUpdateButton');
+  let installPrompt=null;
+  let refreshing=false;
+
+  function isInstalled(){
+    return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  }
+
+  function installGuide(){
+    const isFile=location.protocol==='file:';
+    const isIOS=/iPad|iPhone|iPod/i.test(navigator.userAgent);
+    const isSafari=/Safari/i.test(navigator.userAgent)&&!/Chrome|CriOS|Edg|OPR/i.test(navigator.userAgent);
+    let instruction='Trên Chrome hoặc Edge, mở menu trình duyệt và chọn “Cài đặt ECOM DIGITAL”, hoặc dùng biểu tượng cài đặt ở cuối thanh địa chỉ.';
+    if(isIOS)instruction='Trên iPhone/iPad: bấm nút Chia sẻ của Safari, kéo xuống và chọn “Thêm vào Màn hình chính”.';
+    else if(isSafari)instruction='Trên Safari của Mac: mở menu Tệp và chọn “Thêm vào Dock”. Nếu mục này chưa có, hãy cập nhật macOS/Safari hoặc dùng Chrome.';
+    if(isFile)instruction='Bản đang mở bằng file:// nên trình duyệt chưa thể cài. Hãy mở bằng tên miền HTTPS sau khi triển khai, hoặc chạy localhost rồi truy cập http://127.0.0.1:8080.';
+    if(typeof window.openModal==='function'){
+      window.openModal({
+        title:'Cài ECOM DIGITAL',
+        bodyHtml:`<div class="insight-box"><p>${instruction}</p></div><p class="muted" style="margin-top:14px">Sau khi cài, ứng dụng sẽ có biểu tượng riêng và mở trong cửa sổ độc lập. Dữ liệu Supabase vẫn cần Internet để đăng nhập và đồng bộ.</p>`,
+        footerHtml:'<button class="btn btn-primary" onclick="closeModal()">Đã hiểu</button>'
+      });
+    }else alert(instruction);
+  }
+
+  window.openPwaInstall=async()=>{
+    if(isInstalled()){
+      if(typeof window.openModal==='function')window.openModal({title:'ECOM DIGITAL đã được cài',bodyHtml:'<p>Ứng dụng đang chạy ở chế độ độc lập hoặc đã được thêm vào thiết bị.</p>',footerHtml:'<button class="btn btn-primary" onclick="closeModal()">Đóng</button>'});
+      return;
+    }
+    if(!installPrompt){installGuide();return;}
+    const prompt=installPrompt;
+    installPrompt=null;
+    installButton.hidden=true;
+    await prompt.prompt();
+    const choice=await prompt.userChoice;
+    if(choice.outcome!=='accepted')installGuide();
+  };
+
+  function updateNetworkStatus(){
+    if(location.protocol==='file:'){
+      networkStatus.textContent='Để cài ứng dụng PWA, hãy mở trang qua localhost hoặc tên miền HTTPS.';
+      networkStatus.hidden=false;
+      return;
+    }
+    networkStatus.textContent='Thiết bị đang ngoại tuyến. Dữ liệu Supabase chỉ đồng bộ lại khi có Internet.';
+    networkStatus.hidden=navigator.onLine;
+  }
+
+  window.addEventListener('online',updateNetworkStatus);
+  window.addEventListener('offline',updateNetworkStatus);
+  updateNetworkStatus();
+
+  window.addEventListener('beforeinstallprompt',event=>{
+    event.preventDefault();
+    installPrompt=event;
+    installButton.hidden=false;
+  });
+  installButton.addEventListener('click',()=>window.openPwaInstall());
+  window.addEventListener('appinstalled',()=>{installPrompt=null;installButton.hidden=true;});
+
+  if(!('serviceWorker' in navigator)||location.protocol==='file:')return;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+  });
+  window.addEventListener('load',async()=>{
+    try{
+      const registration=await navigator.serviceWorker.register('./sw.js',{scope:'./'});
+      const showUpdate=worker=>{
+        if(!worker)return;
+        worker.addEventListener('statechange',()=>{
+          if(worker.state==='installed'&&navigator.serviceWorker.controller)updateNotice.hidden=false;
+        });
+      };
+      if(registration.waiting)updateNotice.hidden=false;
+      registration.addEventListener('updatefound',()=>showUpdate(registration.installing));
+      updateButton.addEventListener('click',()=>{
+        if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
+        else location.reload();
+      });
+      registration.update();
+    }catch(error){
+      console.error('Không thể đăng ký PWA:',error);
+    }
+  });
+})();
 </script>
 </body>
 </html>
